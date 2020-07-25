@@ -1,0 +1,41 @@
+FROM golang:1.14-buster AS builder
+
+RUN mkdir -p /go/src/go.virtualstaticvoid.com/ldhdns
+WORKDIR /go/src/go.virtualstaticvoid.com/ldhdns
+
+COPY ldhdns/go.* ./
+RUN go mod download
+
+ARG VERSION
+
+COPY ldhdns/ .
+RUN go build -ldflags="-X go.virtualstaticvoid.com/ldhdns/cmd.Version=$VERSION" -o /go/bin/ldhdns
+
+FROM debian:buster
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update -qq \
+ && apt-get install -qy dnsmasq supervisor \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /go/bin/ldhdns /usr/bin/
+
+RUN mkdir -p /etc/ldhdns
+COPY supervisor /etc/ldhdns/supervisor/
+COPY dnsmasq /etc/ldhdns/dnsmasq/
+
+COPY docker-entrypoint.sh /usr/bin/docker-entrypoint.sh
+RUN chmod +x /usr/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+ENV DOCKER_HOST=unix:///tmp/docker.sock
+
+# configuration
+ENV LDHDNS_DOMAIN_SUFFIX=ldh.dns
+ENV LDHDNS_SUBDOMAIN_LABEL=dns.ldh/subdomain
+ENV LDHDNS_DNSMASQ_HOSTSDIR=/etc/ldhdns/dnsmasq/hosts.d
+ENV LDHDNS_DNSMASQ_PIDFILE=/var/run/dnsmasq.pid
+
+CMD ["controller"]
