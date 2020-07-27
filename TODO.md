@@ -1,0 +1,26 @@
+# TODO
+
+## General
+
+- [ ] complete readme
+- [ ] refactor logging go code
+- [ ] blog post
+
+## Tests
+
+- [ ] unit tests
+- [ ] integration tests
+
+## CI/CD
+
+- [ ] travis-ci
+- [ ] docker image publish automation
+
+## Bugs
+
+- [ ] handle exit signals with docker stop - PID 1 problem
+  - https://github.com/krallin/tini#existing-entrypoint
+
+## Features
+
+- [ ] support multiple domains
