@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/spf13/cobra"
-	"go.virtualstaticvoid.com/ldhdns/pkg/dns"
+	"go.virtualstaticvoid.com/ldhdns/internal/dns"
 )
 
 func init() { Root.AddCommand(NewCmdDns()) }

@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/spf13/cobra"
-	"go.virtualstaticvoid.com/ldhdns/pkg/controller"
+	"go.virtualstaticvoid.com/ldhdns/internal/controller"
 )
 
 func init() { Root.AddCommand(NewCmdController()) }
