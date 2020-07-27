@@ -55,7 +55,7 @@ Happy developer!
 
 ### The Controller
 
-Start the controller on the Docker host network, providing the domain name suffix to use with the `LDHDNS_DOMAIN_SUFFIX` environment variable.
+Start the controller container, attached to the Docker host network, and optionally provide the domain name suffix to use in the `LDHDNS_DOMAIN_SUFFIX` environment variable.
 
 **Security Note:** The container needs to mount the Docker socket so that it can consume the Docker API, and is run with the `apparmor=unconfined` security option and mounts the SystemBus Socket so that it is able to configure `systemd-resolved` dynamically.
 
@@ -71,11 +71,11 @@ docker run \
   virtualstaticvoid/ldhdns:0.1.0
 ```
 
-Optionally, the `LDHDNS_SUBDOMAIN_LABEL` environment variable can be used to override the label used by containers. The default label is `dns.ldh/subdomain`.
+Additionally, the `LDHDNS_SUBDOMAIN_LABEL` environment variable can be used to override the label used by containers. The default label is `dns.ldh/subdomain`.
 
 ### Your Containers
 
-For the containers you want to have DNS for add a `dns.ldh/subdomain=<sub-domain>` label with the desired sub-domain as the value. The sub-domain will be appended to the domain name given in the `LDHDNS_DOMAIN_SUFFIX` environment variable of the controller to form a fully qualified domain name.
+For the containers needing DNS, add a `dns.ldh/subdomain=<sub-domain>` label with the desired sub-domain. The sub-domain will be appended to the domain name given in the `LDHDNS_DOMAIN_SUFFIX` environment variable of the controller to form a fully qualified domain name.
 
 To apply the label; for example from the command line:
 
@@ -93,7 +93,7 @@ services:
       "dns.ldh/subdomain": "foo"
 ```
 
-*Note*: Labels cannot be added to an already running container, so you will need to re-create containers to apply the label.
+*Note*: Labels cannot be added to an already running container so you will need to re-create containers to apply the label.
 
 ### Consuming
 

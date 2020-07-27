@@ -227,7 +227,7 @@ func (s *server) containerRemoved(containerID string) error {
 	// delete the file
 	err = os.Remove(fileName)
 	if err != nil {
-		// swallow error
+		// ignore error
 		return nil
 	}
 
