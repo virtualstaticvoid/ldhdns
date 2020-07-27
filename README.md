@@ -24,7 +24,7 @@ Each of these methods have short-comings and/or issues, such as when:
 * Portability issues for other developers on their machines.
 * More configuration required so that the application can run in development and deployed environments without code changes.
 
-In the above example, to access the SPA website with a browser a typical host to container port mapping would be `8080` to `80` to use the URL `http://localhost:8080`, the REST API mapped to `8090` which would require the SPA application to be configured to use `http://localhost:8090` for the API. Furthermore, you may want to run some ad-hoc SQL queries whilst debugging, so connecting a tool such as `psql` would require a further port mapping of say `85432` to `5432` for PostgreSQL.
+In the above example, to access the SPA website with a browser, a typical host to container port mapping could be `8080` to `80` to use the URL `http://localhost:8080` and the REST API mapped to `8090` which would require the SPA application to be configured to use `http://localhost:8090` for the API. Furthermore, you may want to run some ad-hoc SQL queries whilst debugging, so connecting a tool such as `psql` would require a further port mapping of say `85432` to `5432` for PostgreSQL.
 
 As you can see, this gets complicated quickly and isn't a great developer experience!
 
@@ -35,7 +35,7 @@ Don't even think about using `docker-compose up --scale SERVICE=NUM` with more t
 ## Solution
 
 `ldhdns` provides a simple solution, where containers are able to declaratively provide a DNS name which is
-dynamically resolveable on the development machine to the container and the _actual service ports_ can be used just like in production.
+dynamically resolveable on the development machine to the container and the _actual service ports_ can be used, just like in production.
 
 The only requirement is that your containers have a unique IPv4 and/or IPv6 address. I.e. They can't run on the host Docker network.
 
