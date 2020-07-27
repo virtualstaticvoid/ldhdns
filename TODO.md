@@ -24,3 +24,5 @@
 ## Features
 
 - [ ] support multiple domains
+- [ ] docker for Mac/Windows
+- [ ] other host DNS service (not systemd-resolved)
