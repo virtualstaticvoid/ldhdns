@@ -207,6 +207,7 @@ func (s *server) runDNSContainer() error {
 	// create image using own container image and bindings, using "dns" command
 	config := &container.Config{
 		Image: s.ownContainer.Config.Image,
+		Env:   s.ownContainer.Config.Env,
 		Cmd:   []string{"dns"},
 	}
 
