@@ -2,11 +2,17 @@
 
 A tool to provide DNS for docker containers running on a single host.
 
+## Requirements
+
+* Linux operating system
+* Docker
+* [systemd-resolved][resolved] service
+
 ## Usage
 
 _TBC_
 
-Start the controller docker container on the host network.
+Start the controller container on the docker host network.
 
 ```
 docker run \
@@ -20,7 +26,7 @@ docker run \
   virtualstaticvoid/ldhdns:0.1.0
 ```
 
-Add the `dns.ldh/subdomain` label to any other non-host networked container with the desired sub-domain.
+Add the `dns.ldh/subdomain=<sub-domain>` label to any other non-host networked container with the desired sub-domain.
 
 E.g.
 
@@ -28,7 +34,7 @@ E.g.
 docker run -it --rm --label "dns.ldh/subdomain=foo" ubuntu:20.04 /bin/bash
 ```
 
-Now you can access the container using a DNS name.
+Now you can access the container using a DNS name from the host.
 
 ```
 dig -t A foo.ldh.dns
@@ -53,9 +59,24 @@ foo.ldh.dns.    600 IN  A 172.17.0.2
 ;; MSG SIZE  rcvd: 56
 ```
 
+## How It Works
+
+_TBC_
+
+![](doc/diagram.svg)
+
 ## Configuration
 
 _TBC_
+
+On the controller:
+
+* Use the `LDHDNS_DOMAIN_SUFFIX` environment variable to provide the required domain suffix. E.g. `ldh.dns`.
+* Optionally provide `LDHDNS_SUBDOMAIN_LABEL` environment variable to override label key used. The default is `dns.ldh/subdomain`.
+
+On the respective containers:
+
+* Add `dns.ldh/subdomain=<sub-domain>` label, with the required sub-domain. E.g. `foo`
 
 ## Building
 
@@ -65,6 +86,16 @@ _TBC_
 make
 ```
 
+## Testing
+
+_TBC_
+
+```
+make test
+```
+
 ## License
 
 MIT License. Copyright (c) 2020 Chris Stefano. See [LICENSE](LICENSE) for details.
+
+[resolved]: https://www.freedesktop.org/wiki/Software/systemd/resolved/
