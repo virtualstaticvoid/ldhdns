@@ -39,9 +39,11 @@ dynamically resolveable on the development machine to the container and the _act
 
 The only requirement is that your containers have a unique IPv4 and/or IPv6 address. I.e. They can't run on the host Docker network.
 
-So in the above mentioned example, you could have `web.ldh.dns`, `api.ldh.dns` and `pgsql.ldh.dns` for the respective services, and the SPA website could be configured by convention to use `api` as a sub-domain of the current domain to access the REST API. The website URL would be `http://web.ldh.dns` and the host for connecting `psql` would be `pgsql.ldh.dns`.
+So in the above mentioned example, you could have `web.ldh.dns`, `api.ldh.dns` and `pgsql.ldh.dns` for the respective services, and the SPA website could be configured by convention to use `api` as a sub-domain of the top-level domain to access the REST API. The website URL would be `http://web.ldh.dns` and the host for connecting `psql` would be `pgsql.ldh.dns`.
 
 No need for port mappings, needing to know the IP addresses of containers, manual editing of `/etc/hosts` or having funky configuration to manage differences between development and production.
+
+Finally, with the increasing requirement for greater security, actual signed certificates for SSL together with matching domain names is more easily possible. E.g. Running a local docker registry using `ldhdns` without configuring "insecure" options.
 
 Happy developer!
 
@@ -149,24 +151,24 @@ docker ps --filter='label=dns.ldh/subdomain=foo' --format "{{.ID}}" | \
 
 _TBC_
 
-The following digram illustrates the components which make up the solution, and how they interact with the host machine, the docker API, systemd-resolved and other applications such as a browser or psql.
+The following diagram illustrates the components which make up the solution, and how they interact with the host machine, the docker API, systemd-resolved and other applications such as a browser or psql.
 
 ![](doc/diagram.svg)
 
 ## Inspiration
 
-* I got tired of running `docker inspect`, figuring out the container name, and manually editing `/etc/hosts`.
+* I got tired of running `docker ps` to figure out the container name, followed by `docker inspect` to get the IP address and then manually editing `/etc/hosts`.
 * I couldn't come up with a consistent convention for mapping host to container ports. What comes after 8099?
 
 ## Credits
 
 * [Configure systemd-resolved to use a specific DNS nameserver for a given domain][brasey]
 * [How to configure systemd-resolved and systemd-networkd to use local DNS server for resolving local domains and remote DNS server for remote domains][stackexchange]
-* [`dnsmasq` Tips and Tricks][dnsmasq-tips]
 * [`dnsmasq`][dnsmasq]
+* [`dnsmasq` Tips and Tricks][dnsmasq-tips]
+* [github.com/programster/docker-dnsmasq][programster]
 * [`systemd-resolved`][resolved]
 * [github.com/jonathanio/update-systemd-resolved][jonathanio]
-* [github.com/programster/docker-dnsmasq][programster]
 
 ## License
 
