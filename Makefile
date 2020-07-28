@@ -3,6 +3,8 @@ IMAGE:=ldhdns
 DOCKER_REPO:=virtualstaticvoid
 VERSION?=latest
 
+export
+
 # default build target
 all::
 
@@ -26,6 +28,20 @@ debug:
 		--interactive \
 		--tty \
 		--network host \
+		--security-opt "apparmor=unconfined" \
+		--volume "/var/run/docker.sock:/tmp/docker.sock" \
+		--volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
+		$(IMAGE):$(VERSION)
+
+.PHONY: run
+run:
+
+	# TODO: check if container exists already
+	docker run \
+		--name ldhdns \
+		--detach \
+		--network host \
+		--restart always \
 		--security-opt "apparmor=unconfined" \
 		--volume "/var/run/docker.sock:/tmp/docker.sock" \
 		--volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
