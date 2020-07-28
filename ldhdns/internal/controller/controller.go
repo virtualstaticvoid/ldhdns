@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+	"time"
 )
 
 const (
@@ -32,7 +33,6 @@ type server struct {
 	ownContainerId     string
 	ownContainer       types.ContainerJSON
 	containerNetworkID string
-	dnsContainerId     string
 	dnsContainer       types.ContainerJSON
 	linkObject         dbus.BusObject
 }
@@ -47,7 +47,7 @@ func Run(domain string) error {
 	defer server.close()
 
 	log.Println("Starting DNS container...")
-	err = server.runDNSContainer()
+	err = server.findOrCreateAndRunDNSContainer()
 	if err != nil {
 		log.Println("Failed to start DNS container: ", err)
 		return err
@@ -111,13 +111,15 @@ func newServer(domain string) (*server, error) {
 }
 
 func (s *server) close() error {
+	log.Println("Reverting DNS change...")
 	err := s.revertDNSForLink()
 	if err != nil {
 		log.Printf("Failed to revert DNS: %s\n", err)
 		return err
 	}
 
-	err = s.docker.ContainerStop(s.ctx, s.dnsContainer.ID, nil)
+	log.Println("Stopping DNS container...")
+	err = s.stopDNSContainer()
 	if err != nil {
 		log.Printf("Failed to stop container %s: %s\n", s.dnsContainer.ID, err)
 		return err
@@ -181,7 +183,7 @@ func (s *server) findOrCreateNetwork() (string, error) {
 	containerNetwork, err := s.docker.NetworkInspect(s.ctx, networkID)
 	if err != nil && client.IsErrNetworkNotFound(err) {
 		// not found; create new bridge network
-		log.Printf("Creating %s network\n", networkID)
+		log.Printf("Creating %s network...\n", networkID)
 		networkCreateOptions := types.NetworkCreate{
 			Driver: "bridge",
 		}
@@ -203,46 +205,74 @@ func (s *server) findOrCreateNetwork() (string, error) {
 	return containerNetworkID, nil
 }
 
-func (s *server) runDNSContainer() error {
-	// create image using own container image and bindings, using "dns" command
-	config := &container.Config{
-		Image: s.ownContainer.Config.Image,
-		Env:   s.ownContainer.Config.Env,
-		Cmd:   []string{"dns"},
-	}
+func (s *server) findOrCreateAndRunDNSContainer() error {
+	var containerID string
 
-	// Note: needs CAP_NET_ADMIN capabilities
-	hostConfig := &container.HostConfig{
-		AutoRemove: true,
-		Binds:      s.ownContainer.HostConfig.Binds,
-		CapAdd:     []string{"CAP_NET_ADMIN"},
-	}
+	// formulate container name by convention
+	// using the controllers container name pairs the two nicely
+	// and allows more than one instance of the controller to run
+	// for different domains and/or sub-domain labels if required
+	// NB: no validation is done on the uniqueness of domain names
+	// if multiple instances are running for the same domain
+	// NOTE: container name is prefix with "/" which needs to be removed
+	containerName := fmt.Sprintf("%s_%s", s.ownContainer.Name[1:], "dns")
 
-	// supply the bridge network we created
-	networkingConfig := &network.NetworkingConfig{
-		EndpointsConfig: map[string]*network.EndpointSettings{
-			networkID: {
-				NetworkID: s.containerNetworkID,
+	// container already exists?
+	dnsContainer, err := s.docker.ContainerInspect(s.ctx, containerName)
+	if err != nil && client.IsErrNetworkNotFound(err) {
+
+		// not found; create container using own image and bindings, using "dns" command
+		log.Printf("Creating %s container...\n", containerName)
+
+		config := &container.Config{
+			Image: s.ownContainer.Config.Image,
+			Env:   s.ownContainer.Config.Env,
+			Cmd:   []string{"dns"},
+		}
+
+		// Note: needs CAP_NET_ADMIN capabilities
+		hostConfig := &container.HostConfig{
+			AutoRemove: true,
+			Binds:      s.ownContainer.HostConfig.Binds,
+			CapAdd:     []string{"CAP_NET_ADMIN"},
+		}
+
+		// supply the bridge network we created
+		networkingConfig := &network.NetworkingConfig{
+			EndpointsConfig: map[string]*network.EndpointSettings{
+				networkID: {
+					NetworkID: s.containerNetworkID,
+				},
 			},
-		},
-	}
+		}
 
-	log.Println("Starting DNS server container")
-	dnsContainer, err := s.docker.ContainerCreate(s.ctx, config, hostConfig, networkingConfig, "")
-	if err != nil {
-		log.Printf("Failed to create container: %s\n", err)
+		newContainer, err := s.docker.ContainerCreate(s.ctx, config, hostConfig, networkingConfig, containerName)
+		if err != nil {
+			log.Printf("Failed to create container: %s\n", err)
+			return err
+		}
+		containerID = newContainer.ID
+
+	} else if err != nil {
+
+		log.Printf("Failed to inspect container %s: %s\n", networkID, err)
 		return err
+	} else {
+
+		containerID = dnsContainer.ID
 	}
 
-	err = s.docker.ContainerStart(s.ctx, dnsContainer.ID, types.ContainerStartOptions{})
+	err = s.docker.ContainerStart(s.ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
 		log.Printf("Failed to start container: %s\n", err)
 		return err
 	}
 
-	s.dnsContainer, err = s.docker.ContainerInspect(s.ctx, dnsContainer.ID)
+	// finally inspect the running container
+	// since the network info is required
+	s.dnsContainer, err = s.docker.ContainerInspect(s.ctx, containerID)
 	if err != nil {
-		log.Printf("Failed to inspect container %s: %s\n", dnsContainer.ID, err)
+		log.Printf("Failed to inspect container %s: %s\n", containerID, err)
 		return err
 	}
 
@@ -360,9 +390,20 @@ func (s *server) setDNSForLink(address net.IP, index int) (dbus.BusObject, error
 	return link, nil
 }
 
-func (s *server) revertDNSForLink() error {
-	var callFlags dbus.Flags
+func (s *server) runEventLoop() error {
+	signals := make(chan os.Signal)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+	// wait to be signalled
+	<-signals
+	return nil
+}
 
+func (s *server) revertDNSForLink() error {
+	if s.linkObject == nil {
+		return nil
+	}
+
+	var callFlags dbus.Flags
 	result := s.linkObject.Call("org.freedesktop.resolve1.Link.Revert", callFlags)
 	if result.Err != nil {
 		return fmt.Errorf("failed to revert link DNS: %v", result.Err)
@@ -371,10 +412,11 @@ func (s *server) revertDNSForLink() error {
 	return nil
 }
 
-func (s *server) runEventLoop() error {
-	signals := make(chan os.Signal)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	// wait to be signalled
-	<-signals
-	return nil
+func (s *server) stopDNSContainer() error {
+	if len(s.dnsContainer.ID) == 0 {
+		return nil
+	}
+
+	var timeout = 30 * time.Second
+	return s.docker.ContainerStop(s.ctx, s.dnsContainer.ID, &timeout)
 }
