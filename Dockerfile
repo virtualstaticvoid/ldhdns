@@ -16,7 +16,7 @@ FROM debian:buster
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -qq \
- && apt-get install -qy dnsmasq supervisor \
+ && apt-get install -qy dumb-init dnsmasq supervisor \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 

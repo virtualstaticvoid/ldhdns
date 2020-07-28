@@ -18,7 +18,7 @@
 
 ## Bugs
 
-- [ ] handle exit signals with docker stop - PID 1 problem
+- [x] handle exit signals with docker stop - PID 1 problem
   - https://github.com/krallin/tini#existing-entrypoint
 
 ## Features
