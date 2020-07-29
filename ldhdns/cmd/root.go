@@ -6,6 +6,7 @@ import (
 
 const (
 	// configuration defaults
+	defaultNetworkId             = "ldhdns"
 	defaultDomainSuffix          = "ldh.dns"
 	defaultSubDomainLabel        = "dns.ldh/subdomain"
 	defaultDnsmasqHostsDirectory = "/etc/ldhdns/dnsmasq/hosts.d"
@@ -14,6 +15,7 @@ const (
 
 var (
 	// configuration variables
+	networkId             string
 	domainSuffix          string
 	subDomainLabel        string
 	dnsmasqHostsDirectory string

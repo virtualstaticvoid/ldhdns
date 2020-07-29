@@ -21,7 +21,6 @@ import (
 )
 
 const (
-	networkID            = "ldhdns"
 	containerStopTimeout = 30 * time.Second
 )
 
@@ -30,6 +29,7 @@ type server struct {
 	docker             *client.Client
 	ctx                context.Context
 	cancel             context.CancelFunc
+	networkId          string
 	domain             string
 	ownContainerId     string
 	ownContainer       *types.ContainerJSON
@@ -38,9 +38,9 @@ type server struct {
 	linkObject         dbus.BusObject
 }
 
-func Run(domain string) error {
+func Run(networkId string, domain string) error {
 	log.Println("Starting...")
-	s, err := newServer(domain)
+	s, err := newServer(networkId, domain)
 	if err != nil {
 		log.Println("Failed to start server: ", err)
 		return err
@@ -72,7 +72,7 @@ func Run(domain string) error {
 	return nil
 }
 
-func newServer(domain string) (*server, error) {
+func newServer(networkId string, domain string) (*server, error) {
 	// connect to the docker API
 	docker, err := client.NewEnvClient()
 	if err != nil {
@@ -84,10 +84,11 @@ func newServer(domain string) (*server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	svr := &server{
-		docker: docker,
-		ctx:    ctx,
-		cancel: cancel,
-		domain: domain,
+		docker:    docker,
+		ctx:       ctx,
+		cancel:    cancel,
+		networkId: networkId,
+		domain:    domain,
 	}
 
 	svr.ownContainerId, err = svr.findOwnContainerId()
@@ -181,23 +182,23 @@ func (s *server) findOrCreateNetwork() (string, error) {
 	var containerNetworkID string
 
 	// attempt to retrieve existing network
-	containerNetwork, err := s.docker.NetworkInspect(s.ctx, networkID)
+	containerNetwork, err := s.docker.NetworkInspect(s.ctx, s.networkId)
 	if err != nil && client.IsErrNetworkNotFound(err) {
 		// not found; create new bridge network
-		log.Printf("Creating %s network...\n", networkID)
+		log.Printf("Creating %s network...\n", s.networkId)
 		networkCreateOptions := types.NetworkCreate{
 			Driver: "bridge",
 		}
 
-		newNetwork, err := s.docker.NetworkCreate(s.ctx, networkID, networkCreateOptions)
+		newNetwork, err := s.docker.NetworkCreate(s.ctx, s.networkId, networkCreateOptions)
 		if err != nil {
-			log.Printf("Failed to create network %s: %s\n", networkID, err)
+			log.Printf("Failed to create network %s: %s\n", s.networkId, err)
 			return containerNetworkID, err
 		}
 		containerNetworkID = newNetwork.ID
 
 	} else if err != nil {
-		log.Printf("Failed to inspect network %s: %s\n", networkID, err)
+		log.Printf("Failed to inspect network %s: %s\n", s.networkId, err)
 		return containerNetworkID, err
 	} else {
 		containerNetworkID = containerNetwork.ID
@@ -241,7 +242,7 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 		// supply the bridge network we created
 		networkingConfig := &network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
-				networkID: {
+				s.networkId: {
 					NetworkID: s.containerNetworkID,
 				},
 			},
@@ -256,7 +257,7 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 
 	} else if err != nil {
 
-		log.Printf("Failed to inspect container %s: %s\n", networkID, err)
+		log.Printf("Failed to inspect container %s: %s\n", s.networkId, err)
 		return err
 	} else {
 
@@ -283,7 +284,7 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 
 func (s *server) applyDNSConfiguration() error {
 	// get the gateway IP address of the DNS container
-	nw := s.dnsContainer.NetworkSettings.Networks[networkID]
+	nw := s.dnsContainer.NetworkSettings.Networks[s.networkId]
 	ipAddress := net.ParseIP(nw.IPAddress)
 	gwIpAddress := net.ParseIP(nw.Gateway)
 	if ipAddress == nil || gwIpAddress == nil {
