@@ -46,3 +46,11 @@ run:
 		--volume "/var/run/docker.sock:/tmp/docker.sock" \
 		--volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
 		$(IMAGE):$(VERSION)
+
+.PHONY: clean
+clean:
+
+	@docker stop ldhdns || true
+	@docker stop ldhdns_dns || true
+	@docker rm --force ldhdns || true
+	@docker network rm ldhdns || true
