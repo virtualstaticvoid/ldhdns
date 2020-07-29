@@ -31,12 +31,12 @@ RUN chmod +x /usr/bin/docker-entrypoint.sh
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 ENV DOCKER_HOST=unix:///tmp/docker.sock
+ENV DNSMASQ_HOSTSDIR=/etc/ldhdns/dnsmasq/hosts.d
+ENV DNSMASQ_PIDFILE=/var/run/dnsmasq.pid
 
 # configuration
 ENV LDHDNS_NETWORK_ID=ldhdns
 ENV LDHDNS_DOMAIN_SUFFIX=ldh.dns
 ENV LDHDNS_SUBDOMAIN_LABEL=dns.ldh/subdomain
-ENV LDHDNS_DNSMASQ_HOSTSDIR=/etc/ldhdns/dnsmasq/hosts.d
-ENV LDHDNS_DNSMASQ_PIDFILE=/var/run/dnsmasq.pid
 
 CMD ["controller"]
