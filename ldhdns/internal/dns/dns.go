@@ -150,7 +150,7 @@ func (s *server) containerAdded(containerID string) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	fmt.Printf("Examining container %s\n", containerID)
+	log.Printf("Examining container %s\n", containerID)
 
 	// get container metadata
 	meta, err := s.docker.ContainerInspect(s.ctx, containerID)
@@ -282,7 +282,8 @@ func contextWithSignal(ctx context.Context) context.Context {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		select {
-		case <-signals:
+		case sig := <-signals:
+			log.Printf("Received %s signal\n", sig.String())
 			cancel()
 		}
 	}()
