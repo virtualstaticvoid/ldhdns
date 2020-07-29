@@ -331,12 +331,16 @@ func (s *server) findNetworkInterfaceIndex(ip net.IP) (int, error) {
 }
 
 func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.BusObject, error) {
+	// see LinkObject for interface details
+	// https://www.freedesktop.org/wiki/Software/systemd/resolved/
 
+	// SetDNS argument - a(iay)
 	type Address struct {
 		AddressFamily int32
 		IpAddress     []uint8
 	}
 
+	// SetDomains argument - a(sb)
 	type Domain struct {
 		Name    string
 		Routing bool
