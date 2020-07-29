@@ -214,7 +214,7 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 	// for different domains and/or sub-domain labels if required
 	// NB: no validation is done on the uniqueness of domain names
 	// if multiple instances are running for the same domain
-	// NOTE: container name is prefix with "/" which needs to be removed
+	// NOTE: container name has "/" prefix which needs to be removed
 	containerName := fmt.Sprintf("%s_%s", s.ownContainer.Name[1:], "dns")
 
 	// container already exists?
