@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	networkID = "ldhdns"
+	networkID            = "ldhdns"
+	containerStopTimeout = 30 * time.Second
 )
 
 type server struct {
@@ -31,37 +32,37 @@ type server struct {
 	cancel             context.CancelFunc
 	domain             string
 	ownContainerId     string
-	ownContainer       types.ContainerJSON
+	ownContainer       *types.ContainerJSON
 	containerNetworkID string
-	dnsContainer       types.ContainerJSON
+	dnsContainer       *types.ContainerJSON
 	linkObject         dbus.BusObject
 }
 
 func Run(domain string) error {
-	log.Printf("Starting...")
-	server, err := newServer(domain)
+	log.Println("Starting...")
+	s, err := newServer(domain)
 	if err != nil {
 		log.Println("Failed to start server: ", err)
 		return err
 	}
-	defer server.close()
+	defer s.close()
 
 	log.Println("Starting DNS container...")
-	err = server.findOrCreateAndRunDNSContainer()
+	err = s.findOrCreateAndRunDNSContainer()
 	if err != nil {
 		log.Println("Failed to start DNS container: ", err)
 		return err
 	}
 
 	log.Println("Applying DNS change...")
-	err = server.applyDNSConfiguration()
+	err = s.applyDNSConfiguration()
 	if err != nil {
 		log.Println("Failed to apply DNS change: ", err)
 		return err
 	}
 
 	log.Println("Running event loop...")
-	err = server.runEventLoop()
+	err = s.runEventLoop()
 	if err != nil {
 		log.Println("Failed to run event loop: ", err)
 		return err
@@ -158,22 +159,22 @@ func (s *server) findOwnContainerId() (string, error) {
 	return ownContainerId, nil
 }
 
-func (s *server) inspectOwnContainer() (types.ContainerJSON, error) {
+func (s *server) inspectOwnContainer() (*types.ContainerJSON, error) {
 	var ownContainer types.ContainerJSON
 
 	ownContainer, err := s.docker.ContainerInspect(s.ctx, s.ownContainerId)
 	if err != nil {
 		log.Printf("Failed to inspect container %s: %s\n", s.ownContainerId, err)
-		return ownContainer, err
+		return &ownContainer, err
 	}
 
 	// must be on host network
 	if ownContainer.HostConfig.NetworkMode != "host" {
 		log.Printf("Container %s isn't connected to the host network\n", s.ownContainerId)
-		return ownContainer, errors.New("container must be run in host network")
+		return &ownContainer, errors.New("container must be run in host network")
 	}
 
-	return ownContainer, nil
+	return &ownContainer, nil
 }
 
 func (s *server) findOrCreateNetwork() (string, error) {
@@ -270,11 +271,12 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 
 	// finally inspect the running container
 	// since the network info is required
-	s.dnsContainer, err = s.docker.ContainerInspect(s.ctx, containerID)
+	dnsContainer, err = s.docker.ContainerInspect(s.ctx, containerID)
 	if err != nil {
 		log.Printf("Failed to inspect container %s: %s\n", containerID, err)
 		return err
 	}
+	s.dnsContainer = &dnsContainer
 
 	return nil
 }
@@ -290,7 +292,7 @@ func (s *server) applyDNSConfiguration() error {
 
 	// get the index of the network interface on the host
 	// this is why the process needs to run on the host network
-	index, err := s.findNetworkInterfaceIndexFor(gwIpAddress)
+	index, err := s.findNetworkInterfaceIndex(gwIpAddress)
 	if err != nil {
 		log.Printf("Failed to get network interface for %s: %s\n", gwIpAddress, err)
 		return err
@@ -298,7 +300,7 @@ func (s *server) applyDNSConfiguration() error {
 
 	// register link DNS for this IP
 	// keep the link object for the clean up later
-	s.linkObject, err = s.setDNSForLink(ipAddress, index)
+	s.linkObject, err = s.setLinkDNSAndRoutingDomain(ipAddress, index)
 	if err != nil {
 		log.Printf("Failed to set DNS on link: %s\n", err)
 		return err
@@ -307,7 +309,7 @@ func (s *server) applyDNSConfiguration() error {
 	return nil
 }
 
-func (s *server) findNetworkInterfaceIndexFor(ip net.IP) (int, error) {
+func (s *server) findNetworkInterfaceIndex(ip net.IP) (int, error) {
 	netInterfaces, err := net.Interfaces()
 	if err != nil {
 		log.Printf("Failed to get network interfaces: %s\n", err)
@@ -327,7 +329,7 @@ func (s *server) findNetworkInterfaceIndexFor(ip net.IP) (int, error) {
 	return 0, errors.New("unable to determine index for network interface")
 }
 
-func (s *server) setDNSForLink(address net.IP, index int) (dbus.BusObject, error) {
+func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.BusObject, error) {
 
 	type Address struct {
 		AddressFamily int32
@@ -394,7 +396,8 @@ func (s *server) runEventLoop() error {
 	signals := make(chan os.Signal)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 	// wait to be signalled
-	<-signals
+	sig := <-signals
+	log.Printf("Received %s signal\n", sig.String())
 	return nil
 }
 
@@ -417,6 +420,11 @@ func (s *server) stopDNSContainer() error {
 		return nil
 	}
 
-	var timeout = 30 * time.Second
-	return s.docker.ContainerStop(s.ctx, s.dnsContainer.ID, &timeout)
+	var timeout = containerStopTimeout
+	err := s.docker.ContainerStop(s.ctx, s.dnsContainer.ID, &timeout)
+	if err != nil {
+		return fmt.Errorf("failed to stop DNS container: %v", err)
+	}
+
+	return nil
 }
