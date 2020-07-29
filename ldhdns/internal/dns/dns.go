@@ -38,6 +38,8 @@ func Run(domainSuffix string, subDomainLabel string, hostsPath string, pidFile s
 	}
 	defer server.close()
 
+	log.Printf("Configured for '%s' domain and '%s' container label.", domainSuffix, subDomainLabel)
+
 	log.Printf("Loading existing containers...")
 	err = server.loadRunningContainers()
 	if err != nil {
