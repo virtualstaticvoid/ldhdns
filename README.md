@@ -57,7 +57,7 @@ Happy developer!
 
 ### The Controller
 
-Start the controller container, attached to the Docker host network, and optionally provide the domain name suffix to use in the `LDHDNS_DOMAIN_SUFFIX` environment variable.
+Start the controller container attached to the Docker host network.
 
 **Security Note:** The container needs to mount the Docker socket so that it can consume the Docker API, and is run with the `apparmor=unconfined` security option and mounts the SystemBus Socket so that it is able to configure `systemd-resolved` dynamically.
 
@@ -67,17 +67,20 @@ docker run \
   --network host \
   --restart always \
   --security-opt "apparmor=unconfined" \
-  --env LDHDNS_DOMAIN_SUFFIX=ldh.dns \
   --volume "/var/run/docker.sock:/tmp/docker.sock" \
   --volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
   virtualstaticvoid/ldhdns:0.1.0
 ```
 
-Additionally, the `LDHDNS_SUBDOMAIN_LABEL` environment variable can be used to override the label used by containers. The default label is `dns.ldh/subdomain`.
+Optionally, the network ID, domain name suffix and container label can be overridden with environment variables:
+
+* `LDHDNS_NETWORK_ID` for docker network name to use. The default is `ldhdns`.
+* `LDHDNS_DOMAIN_SUFFIX` for domain name suffix to use. The default is `ldh.dns`.
+* `LDHDNS_SUBDOMAIN_LABEL` for label used by containers. The default is `dns.ldh/subdomain`.
 
 ### Your Containers
 
-For the containers needing DNS, add a `dns.ldh/subdomain=<sub-domain>` label with the desired sub-domain. The sub-domain will be appended to the domain name given in the `LDHDNS_DOMAIN_SUFFIX` environment variable of the controller to form a fully qualified domain name.
+For the containers needing DNS, add the `dns.ldh/subdomain=<sub-domain>` label with the desired sub-domain. The sub-domain will be appended to the domain name given in the `LDHDNS_DOMAIN_SUFFIX` environment variable of the controller to form a fully qualified domain name.
 
 To apply the label; for example from the command line:
 
