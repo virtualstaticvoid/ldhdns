@@ -18,12 +18,15 @@ build:
 		--tag $(DOCKER_REPO)/$(IMAGE):latest \
 		--tag $(DOCKER_REPO)/$(IMAGE):$(VERSION) \
 		--build-arg VERSION=$(VERSION) \
-		--label "git.sha=$(GIT_SHA)" \
-		--label "git.date=$(GIT_DATE)" \
-		--label "build.date=$(BUILD_DATE)" \
-		--label "maintainer=$(MAINTAINER)" \
-		--label "maintainer.url=$(MAINTAINER_URL)" \
-		--label "build.logurl=$(TRAVIS_BUILD_WEB_URL)" \
+		--label org.opencontainers.image.title="ldhdns" \
+		--label org.opencontainers.image.description="A developer tool for providing DNS for Docker containers running on a local development host." \
+		--label org.opencontainers.image.source="$(MAINTAINER_URL)" \
+		--label org.opencontainers.image.authors="$(MAINTAINER)" \
+		--label org.opencontainers.image.url="$(MAINTAINER_URL)" \
+		--label org.opencontainers.image.created="$(BUILD_DATE)" \
+		--label org.opencontainers.image.version="$(VERSION)" \
+		--label org.opencontainers.image.revision="$(GIT_SHA)" \
+		--label build.logurl="$(TRAVIS_BUILD_WEB_URL)" \
 		.
 
 .PHONY: debug

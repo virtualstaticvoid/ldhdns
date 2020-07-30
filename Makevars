@@ -8,6 +8,5 @@ SUBDOMAIN_LABEL?=dns.ldh/subdomain
 
 MAINTAINER:=Chris Stefano <virtualstaticvoid@gmail.com>
 MAINTAINER_URL:=https://github.com/virtualstaticvoid/ldhdns
-GIT_SHA:=$(shell git rev-parse HEAD)
-GIT_DATE:=$(shell TZ=UTC git show --quiet --date='format-local:%Y-%m-%d %H:%M:%S +0000' --format='%cd')
+GIT_SHA:=$(shell git rev-parse --short HEAD)
 BUILD_DATE:=$(shell date -u '+%Y-%m-%d %H:%M:%S %z')
