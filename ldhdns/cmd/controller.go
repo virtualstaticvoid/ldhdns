@@ -16,11 +16,17 @@ func NewCmdController() *cobra.Command {
 		Short: "Runs ldhdns in controller mode",
 		Args:  cobra.NoArgs,
 		Run: func(_ *cobra.Command, args []string) {
-			if err := controller.Run(networkId, domainSuffix); err != nil {
+			if err := controller.Run(networkId, domainSuffix, subDomainLabel); err != nil {
 				log.Fatal(err)
 			}
 		},
 	}
+
+	cmd.Flags().StringVar(
+		&networkId,
+		"network-id",
+		defaultNetworkId,
+		"Network name of managed docker bridge network.")
 
 	cmd.Flags().StringVar(
 		&domainSuffix,
@@ -29,10 +35,10 @@ func NewCmdController() *cobra.Command {
 		"Domain name suffix for DNS resolution.")
 
 	cmd.Flags().StringVar(
-		&networkId,
-		"network-id",
-		defaultNetworkId,
-		"Network name of managed docker bridge network.")
+		&subDomainLabel,
+		"subdomain-label",
+		defaultSubDomainLabel,
+		"Name of the label used to provide the sub-domain of a container.")
 
 	return cmd
 }

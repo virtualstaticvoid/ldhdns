@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	containerStopTimeout = 30 * time.Second
+	dnsContainerLabelPrefix = "dns.ldh"
+	containerStopTimeout    = 30 * time.Second
 )
 
 type server struct {
@@ -30,7 +31,8 @@ type server struct {
 	ctx                context.Context
 	cancel             context.CancelFunc
 	networkId          string
-	domain             string
+	domainSuffix       string
+	subDomainLabel     string
 	ownContainerId     string
 	ownContainer       *types.ContainerJSON
 	containerNetworkID string
@@ -38,9 +40,9 @@ type server struct {
 	linkObject         dbus.BusObject
 }
 
-func Run(networkId string, domain string) error {
+func Run(networkId string, domainSuffix string, subDomainLabel string) error {
 	log.Println("Starting...")
-	s, err := newServer(networkId, domain)
+	s, err := newServer(networkId, domainSuffix, subDomainLabel)
 	if err != nil {
 		log.Println("Failed to start server: ", err)
 		return err
@@ -72,7 +74,7 @@ func Run(networkId string, domain string) error {
 	return nil
 }
 
-func newServer(networkId string, domain string) (*server, error) {
+func newServer(networkId string, domainSuffix string, subDomainLabel string) (*server, error) {
 	// connect to the docker API
 	docker, err := client.NewEnvClient()
 	if err != nil {
@@ -84,11 +86,12 @@ func newServer(networkId string, domain string) (*server, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	svr := &server{
-		docker:    docker,
-		ctx:       ctx,
-		cancel:    cancel,
-		networkId: networkId,
-		domain:    domain,
+		docker:         docker,
+		ctx:            ctx,
+		cancel:         cancel,
+		networkId:      networkId,
+		domainSuffix:   domainSuffix,
+		subDomainLabel: subDomainLabel,
 	}
 
 	svr.ownContainerId, err = svr.findOwnContainerId()
@@ -117,14 +120,14 @@ func (s *server) close() error {
 	err := s.revertDNSForLink()
 	if err != nil {
 		log.Printf("Failed to revert DNS: %s\n", err)
-		return err
+		// return err
 	}
 
 	log.Println("Stopping DNS container...")
 	err = s.stopDNSContainer()
 	if err != nil {
 		log.Printf("Failed to stop container %s: %s\n", s.dnsContainer.ID, err)
-		return err
+		// return err
 	}
 
 	return s.docker.Close()
@@ -222,14 +225,22 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 	// container already exists?
 	dnsContainer, err := s.docker.ContainerInspect(s.ctx, containerName)
 	if err != nil && client.IsErrNetworkNotFound(err) {
-
 		// not found; create container using own image and bindings, using "dns" command
 		log.Printf("Creating %s container...\n", containerName)
 
+		labels := map[string]string{
+			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "controller-id"):   s.ownContainer.ID,
+			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "controller-name"): s.ownContainer.Name[1:],
+			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "network-id"):      s.networkId,
+			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "domain-suffix"):   s.domainSuffix,
+			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "label"):           s.subDomainLabel,
+		}
+
 		config := &container.Config{
-			Image: s.ownContainer.Config.Image,
-			Env:   s.ownContainer.Config.Env,
-			Cmd:   []string{"dns"},
+			Image:  s.ownContainer.Config.Image,
+			Cmd:    []string{"dns"},
+			Env:    s.ownContainer.Config.Env,
+			Labels: labels,
 		}
 
 		// Note: needs CAP_NET_ADMIN capabilities
@@ -256,7 +267,6 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 		containerID = newContainer.ID
 
 	} else if err != nil {
-
 		log.Printf("Failed to inspect container %s: %s\n", s.networkId, err)
 		return err
 	} else {
@@ -377,7 +387,7 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 
 	var domains []Domain
 	domains = append(domains, Domain{
-		Name:    s.domain,
+		Name:    s.domainSuffix,
 		Routing: true,
 	})
 
@@ -407,6 +417,9 @@ func (s *server) runEventLoop() error {
 }
 
 func (s *server) revertDNSForLink() error {
+	// see LinkObject for interface details
+	// https://www.freedesktop.org/wiki/Software/systemd/resolved/
+
 	if s.linkObject == nil {
 		return nil
 	}
