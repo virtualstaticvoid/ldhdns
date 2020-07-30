@@ -13,7 +13,9 @@ all:: build
 build:
 
 	docker build \
+		--tag $(IMAGE):latest \
 		--tag $(IMAGE):$(VERSION) \
+		--tag $(DOCKER_REPO)/$(IMAGE):latest \
 		--tag $(DOCKER_REPO)/$(IMAGE):$(VERSION) \
 		--build-arg VERSION=$(VERSION) \
 		--label "git.sha=$(GIT_SHA)" \
