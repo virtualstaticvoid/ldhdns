@@ -59,6 +59,7 @@ debug:
 .PHONY: publish
 publish:
 
+	docker push $(DOCKER_REPO)/$(IMAGE):latest
 	docker push $(DOCKER_REPO)/$(IMAGE):$(VERSION)
 
 .PHONY: install
