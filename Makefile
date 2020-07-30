@@ -1,11 +1,5 @@
 # variables
-IMAGE:=ldhdns
-DOCKER_REPO:=virtualstaticvoid
-VERSION?=latest
-
-NETWORK_ID?=ldh.dns
-DOMAIN_SUFFIX?=ldh.dns
-SUBDOMAIN_LABEL?=dns.ldh/subdomain
+include Makevars
 
 export
 
@@ -22,6 +16,12 @@ build:
 		--tag $(IMAGE):$(VERSION) \
 		--tag $(DOCKER_REPO)/$(IMAGE):$(VERSION) \
 		--build-arg VERSION=$(VERSION) \
+		--label "git.sha=$(GIT_SHA)" \
+		--label "git.date=$(GIT_DATE)" \
+		--label "build.date=$(BUILD_DATE)" \
+		--label "maintainer=$(MAINTAINER)" \
+		--label "maintainer.url=$(MAINTAINER_URL)" \
+		--label "build.logurl=$(TRAVIS_BUILD_WEB_URL)" \
 		.
 
 .PHONY: debug

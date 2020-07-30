@@ -1,0 +1,13 @@
+VERSION?=0.1.3
+IMAGE:=ldhdns
+DOCKER_REPO:=virtualstaticvoid
+
+NETWORK_ID?=ldh.dns
+DOMAIN_SUFFIX?=ldh.dns
+SUBDOMAIN_LABEL?=dns.ldh/subdomain
+
+MAINTAINER:=Chris Stefano <virtualstaticvoid@gmail.com>
+MAINTAINER_URL:=https://github.com/virtualstaticvoid/ldhdns
+GIT_SHA:=$(shell git rev-parse HEAD)
+GIT_DATE:=$(shell TZ=UTC git show --quiet --date='format-local:%Y-%m-%d %H:%M:%S +0000' --format='%cd')
+BUILD_DATE:=$(shell date -u '+%Y-%m-%d %H:%M:%S %z')
