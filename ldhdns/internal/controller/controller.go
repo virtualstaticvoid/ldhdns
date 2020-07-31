@@ -49,6 +49,8 @@ func Run(networkId string, domainSuffix string, subDomainLabel string) error {
 	}
 	defer s.close()
 
+	log.Printf("Configured for '%s' domain and '%s' container label.", domainSuffix, subDomainLabel)
+
 	log.Println("Starting DNS container...")
 	err = s.findOrCreateAndRunDNSContainer()
 	if err != nil {
