@@ -32,7 +32,7 @@ build:
 .PHONY: debug
 debug:
 
-  # run test controller for foo*
+  # run test web server for foo*
 	docker run \
 		--detach \
 		--rm \
@@ -66,7 +66,7 @@ publish:
 	docker push $(DOCKER_REPO)/$(IMAGE):$(VERSION)
 
 .PHONY: install
-install:
+install: build
 
 	docker run \
 		--name ldhdns \
