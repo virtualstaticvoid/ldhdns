@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -26,7 +25,6 @@ const (
 )
 
 type server struct {
-	lock               sync.RWMutex
 	docker             *client.Client
 	ctx                context.Context
 	cancel             context.CancelFunc
