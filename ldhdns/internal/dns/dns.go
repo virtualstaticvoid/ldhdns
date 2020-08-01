@@ -38,7 +38,7 @@ func Run(domainSuffix string, subDomainLabel string, hostsPath string, pidFile s
 	}
 	defer server.close()
 
-	log.Printf("Configured for '%s' domain and '%s' container label.", domainSuffix, subDomainLabel)
+	log.Printf("Configured for %q domain and %q container label.", domainSuffix, subDomainLabel)
 
 	log.Printf("Loading existing containers...")
 	err = server.loadRunningContainers()
@@ -94,7 +94,7 @@ func (s *server) loadRunningContainers() error {
 	for _, container := range containerList {
 		err = s.containerAdded(container.ID)
 		if err != nil {
-			log.Printf("[%s] Error loading container: %v\n", container.ID, err)
+			log.Printf("[%s] Error loading container: %s\n", container.ID, err)
 			return err
 		}
 	}
@@ -181,12 +181,12 @@ func (s *server) containerAdded(containerID string) error {
 	}
 	defer file.Close()
 
-	log.Printf("Registering '%s'\n", hostName)
+	log.Printf("Registering %q\n", hostName)
 
 	// only use the first network (if more than one)
 	for _, containerNetwork := range meta.NetworkSettings.Networks {
 		// IPv4 address
-		log.Printf(" → IPv4Address: '%s'\n", containerNetwork.IPAddress)
+		log.Printf(" → IPv4Address: %q\n", containerNetwork.IPAddress)
 		_, err = fmt.Fprintf(file, "%s\t%s\n", containerNetwork.IPAddress, hostName)
 		if err != nil {
 			log.Printf("Error writing file (IPv4): %s\n", err)
@@ -195,7 +195,7 @@ func (s *server) containerAdded(containerID string) error {
 
 		// IPv6 address
 		if len(containerNetwork.GlobalIPv6Address) > 0 {
-			log.Printf(" → IPv6Address: '%s'\n", containerNetwork.GlobalIPv6Address)
+			log.Printf(" → IPv6Address: %q\n", containerNetwork.GlobalIPv6Address)
 			_, err = fmt.Fprintf(file, "%s\t%s\n", containerNetwork.GlobalIPv6Address, hostName)
 			if err != nil {
 				log.Printf("Error writing file (IPv6): %s\n", err)
@@ -261,13 +261,13 @@ func (s *server) signalDnsmasq() error {
 func (s *server) readDnsmasqPID() (int, error) {
 	contents, err := ioutil.ReadFile(s.pidFile)
 	if err != nil {
-		log.Printf("Error reading dnsmasq PID file '%s': %s\n", s.pidFile, err)
+		log.Printf("Error reading dnsmasq PID file %q: %s\n", s.pidFile, err)
 		return 0, err
 	}
 
 	pid, err := strconv.Atoi(strings.TrimSpace(string(contents)))
 	if err != nil {
-		log.Printf("Invalid dnsmasq PID '%s': %s\n", string(contents), err)
+		log.Printf("Invalid dnsmasq PID %q: %s\n", string(contents), err)
 		return 0, err
 	}
 

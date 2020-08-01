@@ -47,7 +47,7 @@ func Run(networkId string, domainSuffix string, subDomainLabel string) error {
 	}
 	defer s.close()
 
-	log.Printf("Configured for '%s' domain and '%s' container label.", domainSuffix, subDomainLabel)
+	log.Printf("Configured for %q domain and %q container label.", domainSuffix, subDomainLabel)
 
 	log.Println("Starting DNS container...")
 	err = s.findOrCreateAndRunDNSContainer()
@@ -358,7 +358,7 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 
 	conn, err := dbus.SystemBus()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to system bus: %v", err)
+		return nil, fmt.Errorf("failed to connect to system bus: %s", err)
 	}
 
 	var linkPath dbus.ObjectPath
@@ -367,7 +367,7 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 	manager := conn.Object("org.freedesktop.resolve1", "/org/freedesktop/resolve1")
 	err = manager.Call("org.freedesktop.resolve1.Manager.GetLink", callFlags, index).Store(&linkPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get link: %v", err)
+		return nil, fmt.Errorf("failed to get link: %s", err)
 	}
 
 	// merge with existing addresses & domains?
@@ -395,13 +395,13 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 	link := conn.Object("org.freedesktop.resolve1", linkPath)
 	result1 := link.Call("org.freedesktop.resolve1.Link.SetDNS", callFlags, addresses)
 	if result1.Err != nil {
-		return nil, fmt.Errorf("failed to set link DNS: %v", result1.Err)
+		return nil, fmt.Errorf("failed to set link DNS: %s", result1.Err)
 	}
 
 	// update link with routing domain name
 	result2 := link.Call("org.freedesktop.resolve1.Link.SetDomains", callFlags, domains)
 	if result2.Err != nil {
-		return nil, fmt.Errorf("failed to set link Domain: %v", result2.Err)
+		return nil, fmt.Errorf("failed to set link Domain: %s", result2.Err)
 	}
 
 	return link, nil
@@ -427,7 +427,7 @@ func (s *server) revertDNSForLink() error {
 	var callFlags dbus.Flags
 	result := s.linkObject.Call("org.freedesktop.resolve1.Link.Revert", callFlags)
 	if result.Err != nil {
-		return fmt.Errorf("failed to revert link DNS: %v", result.Err)
+		return fmt.Errorf("failed to revert link DNS: %s", result.Err)
 	}
 
 	return nil
@@ -441,7 +441,7 @@ func (s *server) stopDNSContainer() error {
 	var timeout = containerStopTimeout
 	err := s.docker.ContainerStop(s.ctx, s.dnsContainer.ID, &timeout)
 	if err != nil {
-		return fmt.Errorf("failed to stop DNS container: %v", err)
+		return fmt.Errorf("failed to stop DNS container: %s", err)
 	}
 
 	return nil
