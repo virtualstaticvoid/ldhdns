@@ -233,7 +233,7 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "controller-name"): s.ownContainer.Name[1:],
 			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "network-id"):      s.networkId,
 			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "domain-suffix"):   s.domainSuffix,
-			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "label"):           s.subDomainLabel,
+			fmt.Sprintf("%s/%s", dnsContainerLabelPrefix, "subdomain-label"): s.subDomainLabel,
 		}
 
 		config := &container.Config{
