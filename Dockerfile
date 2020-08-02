@@ -3,12 +3,14 @@ FROM golang:1.14-buster AS builder
 RUN mkdir -p /go/src/go.virtualstaticvoid.com/ldhdns
 WORKDIR /go/src/go.virtualstaticvoid.com/ldhdns
 
-COPY ldhdns/go.* ./
+COPY go.* ./
 RUN go mod download
 
 ARG VERSION
 
-COPY ldhdns/ .
+COPY *.go .
+COPY cmd/ cmd/
+COPY internal/ internal
 RUN go build -ldflags="-X go.virtualstaticvoid.com/ldhdns/cmd.Version=$VERSION" -o /go/bin/ldhdns
 
 FROM debian:buster
