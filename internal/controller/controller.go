@@ -375,12 +375,12 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 	var addresses []Address
 	if address.To4() != nil {
 		addresses = append(addresses, Address{
-			AddressFamily: 2, // AF_INET
+			AddressFamily: syscall.AF_INET,
 			IpAddress:     address.To4(),
 		})
 	} else {
 		addresses = append(addresses, Address{
-			AddressFamily: 10, // AF_INET6
+			AddressFamily: syscall.AF_INET6,
 			IpAddress:     address.To16(),
 		})
 	}
