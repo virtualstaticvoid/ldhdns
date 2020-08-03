@@ -55,9 +55,9 @@ debug:
 		$(IMAGE):$(VERSION)
 
 	# clean up
-	@docker ps --filter='label=dns.ldh/controller-name=ldhdnsdebug' --format "{{.ID}}" | xargs docker stop || true
-	@docker ps --filter='label=$(SUBDOMAIN_LABEL)=foo' --format "{{.ID}}" | xargs docker stop || true
-	@docker network rm $(NETWORK_ID) || true
+	@docker ps --filter='label=dns.ldh/controller-name=ldhdnsdebug' --format "{{.ID}}" | xargs docker stop 2> /dev/null || true
+	@docker ps --filter='label=$(SUBDOMAIN_LABEL)=foo' --format "{{.ID}}" | xargs docker stop 2> /dev/null || true
+	@docker network rm $(NETWORK_ID) 2> /dev/null || true
 
 .PHONY: publish
 publish:
