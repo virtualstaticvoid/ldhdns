@@ -78,7 +78,7 @@ install: build
 		--security-opt "apparmor=unconfined" \
 		--volume "/var/run/docker.sock:/tmp/docker.sock" \
 		--volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
-		--restart always \
+		--restart unless-stopped \
 		$(IMAGE):$(VERSION)
 
 .PHONY: uninstall
