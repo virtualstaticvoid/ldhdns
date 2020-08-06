@@ -3,6 +3,10 @@ package dns
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/events"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
 	"io"
 	"io/ioutil"
 	"log"
@@ -13,10 +17,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/events"
-	"github.com/docker/docker/client"
 )
 
 type server struct {
@@ -103,8 +103,12 @@ func (s *server) loadRunningContainers() error {
 }
 
 func (s *server) runEventLoop() error {
+	// we're only interested in container events
+	filter := filters.NewArgs()
+	filter.Add("type", events.ContainerEventType)
+
 	// open docker event stream
-	eventsChan, errorsChan := s.docker.Events(s.ctx, types.EventsOptions{})
+	eventsChan, errorsChan := s.docker.Events(s.ctx, types.EventsOptions{Filters: filter})
 
 	// make channel for capturing returned value
 	// also provides elegant means for waiting on the event loop
@@ -140,7 +144,7 @@ func (s *server) handleDockerEvent(event events.Message) error {
 	switch event.Action {
 	case "start":
 		return s.containerAdded(event.ID)
-	case "die":
+	case "stop", "die":
 		return s.containerRemoved(event.ID)
 	}
 	return nil
