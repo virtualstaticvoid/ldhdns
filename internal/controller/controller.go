@@ -303,11 +303,13 @@ func (s *server) applyDNSConfiguration() error {
 
 	// get the index of the network interface on the host
 	// this is why the process needs to run on the host network
-	index, err := s.findNetworkInterfaceIndex(gwIpAddress)
+	index, name, err := s.findNetworkInterfaceIndex(gwIpAddress)
 	if err != nil {
 		log.Printf("Failed to get network interface for %s: %s\n", gwIpAddress, err)
 		return err
 	}
+
+	log.Printf("Applying configuration to %q network.\n", name)
 
 	// register link DNS for this IP
 	// keep the link object for the clean up later
@@ -320,11 +322,12 @@ func (s *server) applyDNSConfiguration() error {
 	return nil
 }
 
-func (s *server) findNetworkInterfaceIndex(ip net.IP) (int, error) {
+func (s *server) findNetworkInterfaceIndex(ip net.IP) (int, string, error) {
+	var name string
 	netInterfaces, err := net.Interfaces()
 	if err != nil {
 		log.Printf("Failed to get network interfaces: %s\n", err)
-		return 0, err
+		return 0, name, err
 	}
 	for _, netInterface := range netInterfaces {
 		addresses, err := netInterface.Addrs()
@@ -332,12 +335,12 @@ func (s *server) findNetworkInterfaceIndex(ip net.IP) (int, error) {
 			for _, address := range addresses {
 				ipAddr, ok := address.(*net.IPNet)
 				if ok && !ipAddr.IP.IsLoopback() && !ipAddr.IP.IsMulticast() && ipAddr.IP.Equal(ip) {
-					return netInterface.Index, nil
+					return netInterface.Index, netInterface.Name, nil
 				}
 			}
 		}
 	}
-	return 0, errors.New("unable to determine index for network interface")
+	return 0, name, errors.New("unable to determine index for network interface")
 }
 
 func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.BusObject, error) {
