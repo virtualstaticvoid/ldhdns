@@ -32,14 +32,14 @@ build:
 .PHONY: debug
 debug:
 
-  # run test web server for foo*
+	# run test web server for foo*
 	docker run \
 		--detach \
 		--rm \
 		--label "$(SUBDOMAIN_LABEL)=foo" \
 		nginx:stable
 
-  # run controller interactively (Ctrl+C to quit)
+	# run controller interactively (Ctrl+C to quit)
 	docker run \
 		--name ldhdnsdebug \
 		--rm \
