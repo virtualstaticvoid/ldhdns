@@ -30,7 +30,7 @@ type server struct {
 }
 
 func Run(domainSuffix string, subDomainLabel string, hostsPath string, pidFile string) error {
-	log.Printf("Starting...")
+	log.Println("Starting...")
 	server, err := newServer(domainSuffix, subDomainLabel, hostsPath, pidFile)
 	if err != nil {
 		log.Println("Failed to start server: ", err)
@@ -38,9 +38,9 @@ func Run(domainSuffix string, subDomainLabel string, hostsPath string, pidFile s
 	}
 	defer server.close()
 
-	log.Printf("Configured for %q domain and %q container label.", domainSuffix, subDomainLabel)
+	log.Printf("Configured for %q domain and %q container label.\n", domainSuffix, subDomainLabel)
 
-	log.Printf("Loading existing containers...")
+	log.Println("Loading existing containers...")
 	err = server.loadRunningContainers()
 	if err != nil {
 		log.Println("Failed to load existing containers: ", err)
@@ -62,6 +62,7 @@ func newServer(domainSuffix string, subDomainLabel string, hostsPath string, pid
 	// connect to the docker API - uses DOCKER_HOST environment variable
 	docker, err := client.NewEnvClient()
 	if err != nil {
+		log.Println("Failed to connect docker client: ", err)
 		return nil, err
 	}
 
@@ -180,7 +181,7 @@ func (s *server) containerAdded(containerID string) error {
 	// write "DNS" host file
 	file, err := os.Create(filepath.Join(s.hostsPath, containerID))
 	if err != nil {
-		log.Printf("Error creating file: %s\n", err)
+		log.Println("Error creating file: ", err)
 		return err
 	}
 	defer file.Close()
@@ -193,7 +194,7 @@ func (s *server) containerAdded(containerID string) error {
 		log.Printf(" → IPv4Address: %q\n", containerNetwork.IPAddress)
 		_, err = fmt.Fprintf(file, "%s\t%s\n", containerNetwork.IPAddress, hostName)
 		if err != nil {
-			log.Printf("Error writing file (IPv4): %s\n", err)
+			log.Println("Error writing file (IPv4): ", err)
 			return err
 		}
 
@@ -202,7 +203,7 @@ func (s *server) containerAdded(containerID string) error {
 			log.Printf(" → IPv6Address: %q\n", containerNetwork.GlobalIPv6Address)
 			_, err = fmt.Fprintf(file, "%s\t%s\n", containerNetwork.GlobalIPv6Address, hostName)
 			if err != nil {
-				log.Printf("Error writing file (IPv6): %s\n", err)
+				log.Println("Error writing file (IPv6): ", err)
 				return err
 			}
 		}
@@ -227,6 +228,7 @@ func (s *server) containerRemoved(containerID string) error {
 	// file exists?
 	_, err := os.Stat(fileName)
 	if err != nil {
+		// ignore error
 		return nil
 	}
 

@@ -47,7 +47,7 @@ func Run(networkId string, domainSuffix string, subDomainLabel string) error {
 	}
 	defer s.close()
 
-	log.Printf("Configured for %q domain and %q container label.", domainSuffix, subDomainLabel)
+	log.Printf("Configured for %q domain and %q container label.\n", domainSuffix, subDomainLabel)
 
 	log.Println("Starting DNS container...")
 	err = s.findOrCreateAndRunDNSContainer()
@@ -119,7 +119,7 @@ func (s *server) close() error {
 	log.Println("Reverting DNS change...")
 	err := s.revertDNSForLink()
 	if err != nil {
-		log.Printf("Failed to revert DNS: %s\n", err)
+		log.Println("Failed to revert DNS: ", err)
 		// return err
 	}
 
@@ -157,6 +157,7 @@ func (s *server) findOwnContainerId() (string, error) {
 	// extract the last part of path
 	ownContainerId = filepath.Base(firstLine)
 	if len(ownContainerId) < 2 {
+		log.Println("Fatal: Not executing within a container!")
 		return ownContainerId, errors.New("not executing within a container")
 	}
 
@@ -261,7 +262,7 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 
 		newContainer, err := s.docker.ContainerCreate(s.ctx, config, hostConfig, networkingConfig, containerName)
 		if err != nil {
-			log.Printf("Failed to create container: %s\n", err)
+			log.Println("Failed to create container: ", err)
 			return err
 		}
 		containerID = newContainer.ID
@@ -276,7 +277,7 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 
 	err = s.docker.ContainerStart(s.ctx, containerID, types.ContainerStartOptions{})
 	if err != nil {
-		log.Printf("Failed to start container: %s\n", err)
+		log.Println("Failed to start container: ", err)
 		return err
 	}
 
@@ -298,6 +299,7 @@ func (s *server) applyDNSConfiguration() error {
 	ipAddress := net.ParseIP(nw.IPAddress)
 	gwIpAddress := net.ParseIP(nw.Gateway)
 	if ipAddress == nil || gwIpAddress == nil {
+		log.Println("Failed to parse IP addresses")
 		return errors.New("failed to parse IP addresses")
 	}
 
@@ -315,7 +317,7 @@ func (s *server) applyDNSConfiguration() error {
 	// keep the link object for the clean up later
 	s.linkObject, err = s.setLinkDNSAndRoutingDomain(ipAddress, index)
 	if err != nil {
-		log.Printf("Failed to set DNS on link: %s\n", err)
+		log.Println("Failed to set DNS on link: ", err)
 		return err
 	}
 
@@ -326,7 +328,7 @@ func (s *server) findNetworkInterfaceIndex(ip net.IP) (int, string, error) {
 	var name string
 	netInterfaces, err := net.Interfaces()
 	if err != nil {
-		log.Printf("Failed to get network interfaces: %s\n", err)
+		log.Println("Failed to get network interfaces: ", err)
 		return 0, name, err
 	}
 	for _, netInterface := range netInterfaces {
@@ -361,6 +363,7 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 
 	conn, err := dbus.SystemBus()
 	if err != nil {
+		log.Println("Failed to connect to system bus: ", err)
 		return nil, fmt.Errorf("failed to connect to system bus: %s", err)
 	}
 
@@ -370,6 +373,7 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 	manager := conn.Object("org.freedesktop.resolve1", "/org/freedesktop/resolve1")
 	err = manager.Call("org.freedesktop.resolve1.Manager.GetLink", callFlags, index).Store(&linkPath)
 	if err != nil {
+		log.Println("Failed to get link: ", err)
 		return nil, fmt.Errorf("failed to get link: %s", err)
 	}
 
@@ -396,15 +400,17 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 
 	// update link with new DNS server address
 	link := conn.Object("org.freedesktop.resolve1", linkPath)
-	result1 := link.Call("org.freedesktop.resolve1.Link.SetDNS", callFlags, addresses)
-	if result1.Err != nil {
-		return nil, fmt.Errorf("failed to set link DNS: %s", result1.Err)
+	err = link.Call("org.freedesktop.resolve1.Link.SetDNS", callFlags, addresses).Store()
+	if err != nil {
+		log.Println("Failed to set link DNS: ", err)
+		return nil, fmt.Errorf("failed to set link DNS: %s", err)
 	}
 
 	// update link with routing domain name
-	result2 := link.Call("org.freedesktop.resolve1.Link.SetDomains", callFlags, domains)
-	if result2.Err != nil {
-		return nil, fmt.Errorf("failed to set link Domain: %s", result2.Err)
+	err = link.Call("org.freedesktop.resolve1.Link.SetDomains", callFlags, domains).Store()
+	if err != nil {
+		log.Printf("Failed to set link Domain %s: %s\n", s.domainSuffix, err)
+		return nil, fmt.Errorf("failed to set link Domain: %s", err)
 	}
 
 	return link, nil
@@ -428,9 +434,10 @@ func (s *server) revertDNSForLink() error {
 	}
 
 	var callFlags dbus.Flags
-	result := s.linkObject.Call("org.freedesktop.resolve1.Link.Revert", callFlags)
-	if result.Err != nil {
-		return fmt.Errorf("failed to revert link DNS: %s", result.Err)
+	err := s.linkObject.Call("org.freedesktop.resolve1.Link.Revert", callFlags).Store()
+	if err != nil {
+		log.Println("Failed to revert link DNS: ", err)
+		return fmt.Errorf("failed to revert link DNS: %s", err)
 	}
 
 	return nil
@@ -444,6 +451,7 @@ func (s *server) stopDNSContainer() error {
 	var timeout = containerStopTimeout
 	err := s.docker.ContainerStop(s.ctx, s.dnsContainer.ID, &timeout)
 	if err != nil {
+		log.Printf("Failed to stop DNS container %s: %s\n", s.dnsContainer.ID, err)
 		return fmt.Errorf("failed to stop DNS container: %s", err)
 	}
 
