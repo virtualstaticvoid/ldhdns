@@ -1,0 +1,44 @@
+---
+networks:
+  altnet:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.30.0.0/24
+      - subnet: 2001:3200:3200::/64
+
+services:
+
+  # docker-compose logs --follow ldhdns
+  ldhdns:
+    image: ldhdns:latest
+    network_mode: host
+    security_opt:
+    - "apparmor=unconfined"
+    volumes:
+    - "/var/run/docker.sock:/tmp/docker.sock"
+    - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
+
+  # xdg-open http://web.ldh.dns
+  web:
+    image: nginx:latest
+    labels:
+      "dns.ldh/subdomain": "web"
+
+  # curl -v http://api.ldh.dns
+  api:
+    image: nginx:latest
+    networks:
+      - altnet
+    labels:
+      "dns.ldh/subdomain": "api"
+
+  # psql -h pgsql.ldh.dns -U postgres
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_PASSWORD: "p@ssw0rd"
+    labels:
+      "dns.ldh/subdomain": "pgsql"

@@ -32,32 +32,12 @@ build:
 .PHONY: debug
 debug:
 
-	# run test web server for foo*
-	docker run \
-		--detach \
-		--rm \
-		--label "$(SUBDOMAIN_LABEL)=foo" \
-		nginx:stable
+	@# write env vars
+	@echo "NETWORK_ID=$(NETWORK_ID)" 						 > .env
+	@echo "DOMAIN_SUFFIX=$(DOMAIN_SUFFIX)" 			>> .env
+	@echo "SUBDOMAIN_LABEL=$(SUBDOMAIN_LABEL)" 	>> .env
 
-	# run controller interactively (Ctrl+C to quit)
-	docker run \
-		--name ldhdnsdebug \
-		--rm \
-		--interactive \
-		--tty \
-		--network host \
-		--env "LDHDNS_NETWORK_ID=$(NETWORK_ID)" \
-		--env "LDHDNS_DOMAIN_SUFFIX=$(DOMAIN_SUFFIX)" \
-		--env "LDHDNS_SUBDOMAIN_LABEL=$(SUBDOMAIN_LABEL)" \
-		--security-opt "apparmor=unconfined" \
-		--volume "/var/run/docker.sock:/tmp/docker.sock" \
-		--volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
-		$(IMAGE):$(VERSION)
-
-	# clean up
-	@docker ps --filter='label=dns.ldh/controller-name=ldhdnsdebug' --format "{{.ID}}" | xargs docker stop 2> /dev/null || true
-	@docker ps --filter='label=$(SUBDOMAIN_LABEL)=foo' --format "{{.ID}}" | xargs docker stop 2> /dev/null || true
-	@docker network rm $(NETWORK_ID) 2> /dev/null || true
+	docker-compose up --detach
 
 .PHONY: publish
 publish:
