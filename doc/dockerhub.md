@@ -6,10 +6,9 @@ Please see [github.com/virtualstaticvoid/ldhdns][ldhdns] for more details.
 
 ## Requirements
 
-* Linux operating system (e.g. Ubuntu)
-* Docker
-* [`systemd-resolved`][resolved] service enabled and running
-* Optionally, a domain name that you own
+* Linux operating system (e.g. Ubuntu 20.04)
+* [`systemd-resolved`][resolved] service (enabled and running)
+* [`docker`][docker] (`>= 20.10`)
 
 ## Usage
 
@@ -19,8 +18,6 @@ Start the controller, attaching it to the Docker host network, as follows:
 
 **Security Note:** The controller needs to mount the Docker socket so that it can consume the Docker API and it is run with the `apparmor=unconfined` security option and mounts the SystemBus Socket so that it is able to configure `systemd-resolved` dynamically.
 
-**Please inspect the code [in this repository][ldhdns] and build the `ldhdns` container yourself if you are concerned about security.**
-
 ```
 docker run \
   --detach \
@@ -28,7 +25,7 @@ docker run \
   --security-opt "apparmor=unconfined" \
   --volume "/var/run/docker.sock:/tmp/docker.sock" \
   --volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
-  --restart always \
+  --restart unless-stopped \
   virtualstaticvoid/ldhdns:latest
 ```
 
@@ -38,7 +35,9 @@ Optionally, the network ID, domain name suffix and subdomain label can be config
 * `LDHDNS_DOMAIN_SUFFIX` for domain name suffix to use. The default is `ldh.dns`.
 * `LDHDNS_SUBDOMAIN_LABEL` for label used by containers. The default is `dns.ldh/subdomain`.
 
-**Tip:** If you are using a real domain name, be sure to use a subdomain on the TLD, such as `ldh`, to avoid any clashes with it's public DNS. E.g. Use `ldh.yourdomain.com` on your local development host.
+**Tip:** If you are using a real domain name, be sure to use a subdomain, such as `ldh`, on the TLD, to avoid any clashes with it's public DNS. E.g. Use `ldh.yourdomain.com` on your local development host.
+
+**Please inspect the code in the [`ldhdns` repository][ldhdns] and build the container yourself if you are concerned about security.**
 
 ### Your Containers
 
@@ -73,6 +72,7 @@ MIT License. Copyright (c) 2020 Chris Stefano. See [LICENSE][license] for detail
 
 <!-- links -->
 
+[docker]: https://docs.docker.com/get-started
 [ldhdns]: https://github.com/virtualstaticvoid/ldhdns
 [license]: https://github.com/virtualstaticvoid/ldhdns/blob/master/LICENSE
 [resolved]: https://www.freedesktop.org/wiki/Software/systemd/resolved/
