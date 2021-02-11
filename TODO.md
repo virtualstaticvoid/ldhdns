@@ -8,18 +8,21 @@
 
 ## Tests
 
+- [x] docker-compose
 - [ ] unit tests
 - [ ] integration tests
 
 ## CI/CD
 
-- [ ] travis-ci
+- [x] ~travis-ci~
+- [ ] github actions
 - [ ] docker image publish automation
 
 ## Bugs
 
 - [x] handle exit signals with docker stop - PID 1 problem
   - https://github.com/krallin/tini#existing-entrypoint
+- [x] handle system suspend/resume/hibernate
 
 ## Features
 
