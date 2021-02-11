@@ -35,6 +35,7 @@ type server struct {
 	ownContainer       *types.ContainerJSON
 	containerNetworkID string
 	dnsContainer       *types.ContainerJSON
+	systemBus          *dbus.Conn
 	linkObject         dbus.BusObject
 }
 
@@ -112,10 +113,19 @@ func newServer(networkId string, domainSuffix string, subDomainLabel string) (*s
 		return nil, err
 	}
 
+	// open private connection to session bus
+	// since eves-dropping on dbus.SystemBus
+	svr.systemBus, err = svr.connectSessionBus()
+	if err != nil {
+		log.Println("Failed to connect to system bus: ", err)
+		return nil, fmt.Errorf("failed to connect to system bus: %s", err)
+	}
+
 	return svr, nil
 }
 
 func (s *server) close() error {
+
 	log.Println("Reverting DNS change...")
 	err := s.revertDNSForLink()
 	if err != nil {
@@ -128,6 +138,11 @@ func (s *server) close() error {
 	if err != nil {
 		log.Printf("Failed to stop container %s: %s\n", s.dnsContainer.ID, err)
 		// return err
+	}
+
+	// close connection to system bus
+	if s.systemBus != nil {
+		s.systemBus.Close()
 	}
 
 	return s.docker.Close()
@@ -209,6 +224,30 @@ func (s *server) findOrCreateNetwork() (string, error) {
 	}
 
 	return containerNetworkID, nil
+}
+
+func (s *server) connectSessionBus() (*dbus.Conn, error) {
+	conn, err := dbus.SystemBusPrivate()
+	if err != nil {
+		log.Println("Failed to connect to system bus: ", err)
+		return nil, fmt.Errorf("failed to connect to system bus: %s", err)
+	}
+
+	err = conn.Auth(nil)
+	if err != nil {
+		log.Println("Failed to authenticate to system bus: ", err)
+		conn.Close()
+		return nil, err
+	}
+
+	err = conn.Hello()
+	if err != nil {
+		log.Println("Failed hello to system bus: ", err)
+		conn.Close()
+		return nil, err
+	}
+
+	return conn, nil
 }
 
 func (s *server) findOrCreateAndRunDNSContainer() error {
@@ -361,17 +400,11 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 		Routing bool
 	}
 
-	conn, err := dbus.SystemBus()
-	if err != nil {
-		log.Println("Failed to connect to system bus: ", err)
-		return nil, fmt.Errorf("failed to connect to system bus: %s", err)
-	}
-
 	var linkPath dbus.ObjectPath
 	var callFlags dbus.Flags
 
-	manager := conn.Object("org.freedesktop.resolve1", "/org/freedesktop/resolve1")
-	err = manager.Call("org.freedesktop.resolve1.Manager.GetLink", callFlags, index).Store(&linkPath)
+	manager := s.systemBus.Object("org.freedesktop.resolve1", "/org/freedesktop/resolve1")
+	err := manager.Call("org.freedesktop.resolve1.Manager.GetLink", callFlags, index).Store(&linkPath)
 	if err != nil {
 		log.Println("Failed to get link: ", err)
 		return nil, fmt.Errorf("failed to get link: %s", err)
@@ -399,7 +432,7 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 	})
 
 	// update link with new DNS server address
-	link := conn.Object("org.freedesktop.resolve1", linkPath)
+	link := s.systemBus.Object("org.freedesktop.resolve1", linkPath)
 	err = link.Call("org.freedesktop.resolve1.Link.SetDNS", callFlags, addresses).Store()
 	if err != nil {
 		log.Println("Failed to set link DNS: ", err)
@@ -417,12 +450,82 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 }
 
 func (s *server) runEventLoop() error {
-	signals := make(chan os.Signal)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-	// wait to be signalled
-	sig := <-signals
-	log.Printf("Received %s signal\n", sig.String())
-	return nil
+
+	// channel for system interrupts
+	interrupt := s.makeInterruptChannel()
+
+	// channel for system resume
+	systemResume, err := s.makeSystemResumeChannel()
+	if err != nil {
+		log.Println("Failed to setup DBus subscription: ", err)
+		return err
+	}
+
+	for {
+		select {
+		case <-systemResume:
+			log.Println("Re-applying DNS change...")
+			// re-apply DNS configuration after system resume
+			err = s.applyDNSConfiguration()
+			if err != nil {
+				log.Println("Failed to apply DNS change: ", err)
+				return err
+			}
+		case s := <-interrupt:
+			log.Printf("Received %s signal\n", s.String())
+			return nil
+		}
+	}
+}
+
+func (s *server) makeInterruptChannel() chan os.Signal {
+	c := make(chan os.Signal)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	return c
+}
+
+func (s *server) makeSystemResumeChannel() (chan bool, error) {
+	conn, err := dbus.SystemBus()
+	if err != nil {
+		log.Println("Failed to connect to system bus: ", err)
+		return nil, fmt.Errorf("failed to connect to system bus: %s", err)
+	}
+
+	var rules = []string{
+		"type='signal',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'",
+	}
+	var flag uint = 0
+
+	err = conn.BusObject().Call("org.freedesktop.DBus.Monitoring.BecomeMonitor", 0, rules, flag).Store()
+	if err != nil {
+		log.Println("Failed to become monitor: ", err)
+		return nil, fmt.Errorf("failed to become monitor: %s", err)
+	}
+
+	bus := make(chan *dbus.Message, 10)
+	conn.Eavesdrop(bus)
+
+	c := make(chan bool)
+
+	go func() {
+		for msg := range bus {
+			// even though monitor rules are set, check for specific message
+			// in testing sometimes random messages were delivered
+			if msg.Headers[dbus.FieldInterface].Value() == "org.freedesktop.login1.Manager" &&
+				msg.Headers[dbus.FieldMember].Value() == "PrepareForSleep" {
+
+				resuming := !msg.Body[0].(bool)
+				if resuming {
+					log.Println("Resuming")
+					c <- true
+				} else {
+					log.Println("System suspending")
+				}
+			}
+		}
+	}()
+
+	return c, nil
 }
 
 func (s *server) revertDNSForLink() error {
