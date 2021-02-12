@@ -193,7 +193,6 @@ func (s *server) containerAdded(containerID string) error {
 
 	log.Printf("Registering %q\n", hostName)
 
-	// only use the first network (if more than one)
 	for _, containerNetwork := range meta.NetworkSettings.Networks {
 		// IPv4 address
 		log.Printf(" → IPv4Address: %q\n", containerNetwork.IPAddress)
@@ -212,9 +211,6 @@ func (s *server) containerAdded(containerID string) error {
 				return err
 			}
 		}
-
-		// NB: can only use the first address
-		break
 	}
 
 	return nil
