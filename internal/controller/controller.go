@@ -78,6 +78,7 @@ func Run(networkId string, domainSuffix string, subDomainLabel string) error {
 		return err
 	}
 
+	log.Println("Bye...")
 	return nil
 }
 
@@ -147,6 +148,7 @@ func (s *server) close() error {
 	}
 
 	// close connection to system bus
+	log.Println("Closing SystemBus connection...")
 	if s.systemBus != nil {
 		err = s.systemBus.Close()
 		if err != nil {
@@ -155,7 +157,15 @@ func (s *server) close() error {
 		}
 	}
 
-	return s.docker.Close()
+	// close connection to docker
+	log.Println("Closing docker connection...")
+	err = s.docker.Close()
+	if err != nil {
+		log.Println("Failed to close SystemDbus connection: ", err)
+		// return err
+	}
+
+	return nil
 }
 
 func (s *server) findOwnContainerId() (string, error) {

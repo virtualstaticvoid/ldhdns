@@ -60,6 +60,7 @@ func Run(domainSuffix string, subDomainLabel string, hostsPath string, pidFile s
 		return err
 	}
 
+	log.Println("Bye...")
 	return nil
 }
 
