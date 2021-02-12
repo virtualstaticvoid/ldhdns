@@ -16,7 +16,7 @@ Please see [github.com/virtualstaticvoid/ldhdns][ldhdns] for more details.
 
 Start the controller, attaching it to the Docker host network, as follows:
 
-**Security Note:** The controller needs to mount the Docker socket so that it can consume the Docker API and it is run with the `apparmor=unconfined` security option and mounts the SystemBus Socket so that it is able to configure `systemd-resolved` dynamically.
+**Security Note:** The container mounts the Docker socket so that it can consume the Docker API and it is run with the `apparmor=unconfined` security option and mounts the SystemBus socket so that it is able to configure `systemd-resolved` dynamically.
 
 ```
 docker run \
@@ -29,23 +29,23 @@ docker run \
   virtualstaticvoid/ldhdns:latest
 ```
 
-Optionally, the network ID, domain name suffix and subdomain label can be configured with environment variables:
+Additionally, the network ID, domain name suffix and subdomain label can be configured with environment variables:
 
 * `LDHDNS_NETWORK_ID` for docker network name to use. The default is `ldhdns`.
 * `LDHDNS_DOMAIN_SUFFIX` for domain name suffix to use. The default is `ldh.dns`.
 * `LDHDNS_SUBDOMAIN_LABEL` for label used by containers. The default is `dns.ldh/subdomain`.
 
-**Tip:** If you are using a real domain name, be sure to use a subdomain, such as `ldh`, on the TLD, to avoid any clashes with it's public DNS. E.g. Use `ldh.yourdomain.com` on your local development host.
+**Tip:** If you are using a real domain name, be sure to use a subdomain such as `ldh` to avoid any clashes with it's public DNS. E.g. Provide `--env LDHDNS_DOMAIN_SUFFIX=ldh.example.com` to the `docker run` command.
 
-**Please inspect the code in the [`ldhdns` repository][ldhdns] and build the container yourself if you are concerned about security.**
+**Please inspect the code in the [`ldhdns` repository][ldhdns] and build the image yourself if you are concerned about security.**
 
 ### Your Containers
 
-To make containers resolvable, add the label "`dns.ldh/subdomain=<subdomain>`" with the desired subdomain to them.
+To make containers resolvable, add the label "`dns.ldh/subdomain=<subdomain>`" with the desired subdomain to use.
 
 This subdomain will be prepended to the domain name in the `LDHDNS_DOMAIN_SUFFIX` environment variable to form a fully qualified domain name.
 
-Apply the label to a container using the command line:
+To apply the label to a container using the command line:
 
 ```
 docker run -it --label "dns.ldh/subdomain=foo" nginx

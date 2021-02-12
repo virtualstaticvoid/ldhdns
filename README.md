@@ -6,59 +6,13 @@
 
 A developer tool for providing DNS for Docker containers running on a local development host.
 
-## Why?
-
-Consider a scenario where you have a Web Application (SPA), a REST API and PostgreSQL each running within Docker containers on your local development machine, where the HTTP services are accessible on port `80` and the PostgreSQL service on port `5432`.
-
-To access these services locally you will need to either:
-
-1. Map the container ports to host ports and access the services using `localhost` together with the host port number,
-2. Use the IP address of each container together with the container port number,
-3. Manually add domain names to your `/etc/hosts` file for each containers IP address.
-
-Each of these methods have short-comings and/or issues, such as when:
-
-* Multiple services use the same port numbers.
-* Manually figuring out the IP addresses of containers.
-* Manually editing `/etc/hosts`.
-* Having to update `/etc/hosts` when an IP address changes.
-* Running containers with a static IP address so that `/etc/hosts` doesn't need to change.
-* Using complicated scripts to inspect containers to get their IP addresses and/or scripts to make configurations.
-* More application configuration to run in both development and deployed environments without code differences.
-* Portability issues for other developers on their machines when collaborating on projects.
-
-In the above mentioned example, to access the SPA website with a browser a typical host to container port mapping is `8080` to `80`, and a mapping of `8090` to `80` for the REST API, which would require the SPA application to be configured to use `http://localhost:8090` to access the API. You may also want to run some ad-hoc SQL queries whilst debugging, so connecting a tool such as `psql` would require a further port mapping of `8432` to `5432`.
-
-As you can see this setup gets complicated quickly and isn't a great developer experience!
-
-Now imagine adding SSL ports (`443`) so that you can debug under more production like conditions; the situation gets nasty fast. Don't even think about having more than one instance of a container, such as when using the `docker-compose up --scale` command!
-
-## Solution
-
-`ldhdns` provides a simple solution.
-
-You configure `ldhdns` with the domain name to use, such as 'ldh.dns' or a real domain which you own, and then add a label for the subdomain to each of the containers you want to use. `ldhdns` will make them dynamically resolveable on the development machine so that you can use a fully qualified domain name and the _actual service ports_ just like in production.
-
-In the above mentioned example, you would associate `web`, `api` and `pgsql` as subdomains for the respective containers and then have the SPA website configured by convention to use `api` as the subdomain of the top-level domain for accessing the REST API.
-
-If your domain were `ldh.dns` the website URL would be `http://web.ldh.dns` and the `psql` host would be `pgsql.ldh.dns`. If you use a real domain, such as `ldh.yourdomain.com`, the URL would be `http://web.ldh.yourdomain.com` and you could use LetsEncrypt to create a wildcard SSL certificate for `*.ldh.yourdomain.com` so that you could use the same certificate for multiple containers.
-
-No need for port mappings or needing to know the IP addresses of containers, no manual editing of `/etc/hosts` or having funky configuration to manage differences between development and deployed environments.
-
-Happy developer!
-
 ## Requirements
 
-* Linux operating system (e.g. Ubuntu)
-* Docker
-* [`systemd-resolved`][resolved] service enabled and running
-* Optionally, a domain name that you own
-
-## Architecture
-
-`ldhdns` consists of two services which are packaged in the same Docker container.
-
-The controller creates and configures a Docker bridge network and configures `systemd-resolved`. It spawns the second service, which monitors the Docker API for when containers are started or stopped; creating and removing DNS records accordingly; and runs `dnsmasq` to resolve DNS queries for `A` and `AAAA` type records for the given domain.
+* Linux operating system (e.g. Ubuntu 20.04)
+* [`systemd-resolved`][resolved] service (enabled and running)
+* [`docker`][docker] (`>= 20.10`)
+* [`docker-compose`][docker-compose] (`>= 1.27`)
+* _optionally_, `make` for build tasks
 
 ## Usage
 
@@ -66,9 +20,7 @@ The controller creates and configures a Docker bridge network and configures `sy
 
 Start the controller, attaching it to the Docker host network, as follows:
 
-**Security Note:** The controller needs to mount the Docker socket so that it can consume the Docker API and it is run with the `apparmor=unconfined` security option and mounts the SystemBus Socket so that it is able to configure `systemd-resolved` dynamically.
-
-**Please inspect the code in this repository and build the `ldhdns` container yourself if you are concerned about security.**
+**Security Note:** The container mounts the Docker socket so that it can consume the Docker API and it is run with the `apparmor=unconfined` security option and mounts the SystemBus socket so that it is able to configure `systemd-resolved` dynamically.
 
 ```
 docker run \
@@ -77,27 +29,29 @@ docker run \
   --security-opt "apparmor=unconfined" \
   --volume "/var/run/docker.sock:/tmp/docker.sock" \
   --volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
-  --restart always \
+  --restart unless-stopped \
   virtualstaticvoid/ldhdns:latest
 ```
 
-Alternatively, you can run `make install` to run the controller (and `make uninstall` to stop and remove it).
+Visit [hub.docker.com/r/virtualstaticvoid/ldhdns][docker-hub] for available image tags.
 
-Optionally, the network ID, domain name suffix and subdomain label can be configured with environment variables:
+Additionally, the network ID, domain name suffix and subdomain label can be configured with environment variables:
 
 * `LDHDNS_NETWORK_ID` for docker network name to use. The default is `ldhdns`.
 * `LDHDNS_DOMAIN_SUFFIX` for domain name suffix to use. The default is `ldh.dns`.
 * `LDHDNS_SUBDOMAIN_LABEL` for label used by containers. The default is `dns.ldh/subdomain`.
 
-**Tip:** If you are using a real domain name, be sure to use a subdomain on the TLD, such as `ldh`, to avoid any clashes with it's public DNS. E.g. Use `ldh.yourdomain.com` on your local development host.
+**Tip:** If you are using a real domain name, be sure to use a subdomain such as `ldh` to avoid any clashes with it's public DNS. E.g. Provide `--env LDHDNS_DOMAIN_SUFFIX=ldh.example.com` to the `docker run` command.
+
+**Please inspect the code in the [this repository][ldhdns] and build the image yourself if you are concerned about security.**
 
 ### Your Containers
 
-To make containers resolvable, add the label "`dns.ldh/subdomain=<subdomain>`" with the desired subdomain to them.
+To make containers resolvable, add the label "`dns.ldh/subdomain=<subdomain>`" with the desired subdomain to use.
 
 This subdomain will be prepended to the domain name in the `LDHDNS_DOMAIN_SUFFIX` environment variable to form a fully qualified domain name.
 
-Apply the label to a container using the command line:
+To apply the label to a container using the command line:
 
 ```
 docker run -it --label "dns.ldh/subdomain=foo" nginx
@@ -118,63 +72,96 @@ Make sure to use the same label key you provided in the `LDHDNS_SUBDOMAIN_LABEL`
 
 *Note*: Labels cannot be added to existing containers so you will need to re-create them to apply the label.
 
-### Consuming
+## Background
 
-Now you can access the respective container using it's fully qualified domain name.
+Consider a scenario in development where you are building a Single Page Web Application (SPA) and REST API, with a PostgreSQL database, with each service running in Docker containers on your local machine.
 
-For example, in visiting `http://foo.ldh.dns` with your browser or using `curl` from the command line:
+![](doc/example-before.svg)
 
-```
-curl -v http://foo.ldh.dns
-```
+A web browser connects to the Web Application and the REST API, and the API connects to the PostgreSQL database.
 
-Or `psql` connecting to a PostgreSQL container:
+In development, to access these services there are number of options:
 
-```
-psql --host foo.ldh.dns
-```
+1. Map the container ports to host ports and access the services using `localhost` together with the host port number,
+2. Obtain the IP address of each respective container and container port number,
+3. Using domain names instead of IP addresses, adding them to your `/etc/hosts` to map each container IP address to a name.
 
-### Building
+Each of these methods have difficulties, short-comings and implications, such as when:
+
+* Multiple services using the same port number.
+* Steps needed to get the IP addresses of containers.
+* Editing `/etc/hosts` requires root permissions.
+* Manual updates to `/etc/hosts` needed when an IP address changes.
+* Running containers with a static IP address so that `/etc/hosts` doesn't need to change.
+* Using complicated scripts to inspect containers to get their IP addresses, write out configuration files and restart services.
+* Different code paths to handle differences between development and deployed environments.
+* Having to register your own domain name.
+* Managing DNS records.
+* Waiting for DNS updates to take effect.
+* Portability issues for other developers on their machines when collaborating on projects.
+
+Furthermore, host to container port mappings are typically used, so it could be `8080` to `80` for the Web Application and `8090` to `80` for the REST API. The SPA Web Application would therefore have to be configured to use `http://localhost:8090` to access the API. However the API connects directly to PostgreSQL so it would have to configured to use the PostgreSQL container name.
+
+You may also want to run some ad-hoc SQL queries whilst debugging, so connecting a tool such as `psql` would require a further port mapping of `8432` to `5432`.
+
+As you can see this setup gets messy and complicated quickly and isn't a great developer experience!
+
+Now imagine adding SSL ports (`443`) so that you can debug under more production like conditions; the situation gets nasty fast. Don't even think about having more than one instance of a container, such as when using the `docker-compose up --scale` to add more container instances of a service!
+
+## Solution
+
+`ldhdns` provides a simple solution. It monitors running containers for labels which contain the domain name to use and configures and runs a lightweight DNS server. These domain names are dynamically resolveable on the host and from within containers, so that you can use the same fully qualified domain names in each scenario and use the _actual service ports_ just like in production.
+
+In the above mentioned example, you could use `web`, `api` and `pgsql` as the subdomains for the respective containers. The Web Application URL would be `http://web.ldh.dns`, the REST API would be `http://api.ldh.dns` and the PostgreSQL service would be `pgsql.ldh.dns`.
+
+![](doc/example-after.svg)
+
+## Architecture
+
+`ldhdns` consists of two services which are packaged in the same Docker container.
+
+The following diagram illustrates the components which make up the solution, and how they interact with the host machine, the docker API, systemd-resolved and other applications such as a browser or psql.
+
+![](doc/architecture.svg)
+
+The controller creates and configures a Docker bridge network and configures `systemd-resolved`. It spawns the second service, which monitors the Docker API for when containers are started or stopped; creating and removing DNS records accordingly; and runs `dnsmasq` to resolve DNS queries for `A` (ipv4) and `AAAA` (ipv6) type records for the given domain.
+
+## Building
 
 Use `make` to build the `ldhdns` docker image.
 
-### Debugging
+## Debugging
 
 You can query the DNS records to check that it works by using `dig`:
 
 ```
-dig -t ANY foo.ldh.dns
+dig -t ANY web.ldh.dns
 
 ...
-; <<>> DiG 9.16.1-Ubuntu <<>> -t A foo.ldh.dns
+; <<>> DiG 9.16.1-Ubuntu <<>> -t A web.ldh.dns
 ;; global options: +cmd
 ;; Got answer:
 ;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: ...
 ...
 
 ;; ANSWER SECTION:
-foo.ldh.dns.    600 IN  A 172.18.0.3
-foo.ldh.dns.    600 IN  AAAA fc00:f853:ccd:e793::3
+web.ldh.dns.    600 IN  A 172.18.0.3
+web.ldh.dns.    600 IN  AAAA fc00:f853:ccd:e793::3
 ...
 ```
 
 And cross-checking with the IP addresses of each running container labelled with `dns.ldh/subdomain`:
 
 ```
-docker ps --filter='label=dns.ldh/subdomain=foo' --format "{{.ID}}" | \
+docker ps --filter='label=dns.ldh/subdomain=web' --format "{{.ID}}" | \
   xargs docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} [{{.GlobalIPv6Address}}]{{end}}' --
 
 ...
 172.18.0.3 [fc00:f853:ccd:e793::3]
 ```
 
-## How It Works
 
-_TBC_
 
-The following diagram illustrates the components which make up the solution, and how they interact with the host machine, the docker API, systemd-resolved and other applications such as a browser or psql.
-
-![](doc/diagram.svg)
 
 ## Inspiration
 
@@ -202,7 +189,11 @@ MIT License. Copyright (c) 2020 Chris Stefano. See [LICENSE](LICENSE) for detail
 [brasey]: https://gist.github.com/brasey/fa2277a6d7242cdf4e4b7c720d42b567#solution
 [dnsmasq-tips]: https://www.linux.com/topic/networking/advanced-dnsmasq-tips-and-tricks/
 [dnsmasq]: http://www.thekelleys.org.uk/dnsmasq/doc.html
+[docker-compose]: https://docs.docker.com/compose/install
+[docker-hub]: https://hub.docker.com/repository/docker/virtualstaticvoid/ldhdns
+[docker]: https://docs.docker.com/get-started
 [jonathanio]: https://github.com/jonathanio/update-systemd-resolved
+[ldhdns]: https://github.com/virtualstaticvoid/ldhdns
 [programster]: https://github.com/programster/docker-dnsmasq
 [resolved]: https://www.freedesktop.org/wiki/Software/systemd/resolved/
 [stackexchange]: https://unix.stackexchange.com/a/442599
