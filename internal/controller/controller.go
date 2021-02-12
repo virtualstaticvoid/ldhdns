@@ -281,7 +281,7 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 	// NB: no validation is done on the uniqueness of domain names
 	// if multiple instances are running for the same domain
 	// NOTE: container name has "/" prefix which needs to be removed
-	containerName := fmt.Sprintf("%s_%s", s.ownContainer.Name[1:], "dns")
+	containerName := fmt.Sprintf("%s_%s", s.ownContainer.Name[1:], s.ownContainerId[:12])
 
 	// container already exists?
 	dnsContainer, err := s.docker.ContainerInspect(s.ctx, containerName)
