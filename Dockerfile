@@ -39,6 +39,7 @@ RUN chmod +x /usr/bin/docker-entrypoint.sh
 ENV DOCKER_HOST=unix:///tmp/docker.sock
 ENV DNSMASQ_HOSTSDIR=/etc/ldhdns/dnsmasq/hosts.d
 ENV DNSMASQ_PIDFILE=/var/run/dnsmasq.pid
+ENV DNSMASQ_LOCAL_TTL=15
 
 # configuration
 ENV LDHDNS_NETWORK_ID=ldhdns
