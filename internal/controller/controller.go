@@ -47,7 +47,6 @@ func Run(networkId string, domainSuffix string, subDomainLabel string) error {
 		log.Println("Failed to start server: ", err)
 		return err
 	}
-	defer s.close()
 
 	log.Printf("Configured for %q domain and %q container label.\n", domainSuffix, subDomainLabel)
 
@@ -73,6 +72,12 @@ func Run(networkId string, domainSuffix string, subDomainLabel string) error {
 	}
 
 	log.Println("Shutting down...")
+	err = s.close()
+	if err != nil {
+		log.Println("Failed shutdown: ", err)
+		return err
+	}
+
 	return nil
 }
 

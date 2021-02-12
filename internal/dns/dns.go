@@ -36,7 +36,6 @@ func Run(domainSuffix string, subDomainLabel string, hostsPath string, pidFile s
 		log.Println("Failed to start server: ", err)
 		return err
 	}
-	defer server.close()
 
 	log.Printf("Configured for %q domain and %q container label.\n", domainSuffix, subDomainLabel)
 
@@ -55,6 +54,12 @@ func Run(domainSuffix string, subDomainLabel string, hostsPath string, pidFile s
 	}
 
 	log.Println("Shutting down...")
+	err = server.close()
+	if err != nil {
+		log.Println("Failed shutdown: ", err)
+		return err
+	}
+
 	return nil
 }
 
