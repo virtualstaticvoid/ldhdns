@@ -20,6 +20,7 @@ Start the controller, attaching it to the Docker host network, as follows:
 
 ```
 docker run \
+  --name ldhdns \
   --detach \
   --network host \
   --security-opt "apparmor=unconfined" \
