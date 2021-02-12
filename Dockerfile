@@ -1,5 +1,5 @@
 # build image
-FROM golang:1.14-buster AS builder
+FROM golang:1.15-buster AS builder
 
 RUN mkdir -p /go/src/go.virtualstaticvoid.com/ldhdns
 WORKDIR /go/src/go.virtualstaticvoid.com/ldhdns

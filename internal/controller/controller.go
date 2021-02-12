@@ -9,7 +9,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"log"
 	"net"
 	"os"
@@ -77,7 +78,7 @@ func Run(networkId string, domainSuffix string, subDomainLabel string) error {
 
 func newServer(networkId string, domainSuffix string, subDomainLabel string) (*server, error) {
 	// connect to the docker API
-	docker, err := client.NewEnvClient()
+	docker, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		log.Println("Failed to connect to Docker API: ", err)
 		return nil, err
@@ -142,7 +143,11 @@ func (s *server) close() error {
 
 	// close connection to system bus
 	if s.systemBus != nil {
-		s.systemBus.Close()
+		err = s.systemBus.Close()
+		if err != nil {
+			log.Println("Failed to close SystemDbus connection: ", err)
+			// return err
+		}
 	}
 
 	return s.docker.Close()
@@ -199,10 +204,11 @@ func (s *server) inspectOwnContainer() (*types.ContainerJSON, error) {
 
 func (s *server) findOrCreateNetwork() (string, error) {
 	var containerNetworkID string
+	options := types.NetworkInspectOptions{}
 
 	// attempt to retrieve existing network
-	containerNetwork, err := s.docker.NetworkInspect(s.ctx, s.networkId)
-	if err != nil && client.IsErrNetworkNotFound(err) {
+	containerNetwork, err := s.docker.NetworkInspect(s.ctx, s.networkId, options)
+	if err != nil && client.IsErrNotFound(err) {
 		// not found; create new bridge network
 		log.Printf("Creating %s network...\n", s.networkId)
 		networkCreateOptions := types.NetworkCreate{
@@ -236,14 +242,14 @@ func (s *server) connectSessionBus() (*dbus.Conn, error) {
 	err = conn.Auth(nil)
 	if err != nil {
 		log.Println("Failed to authenticate to system bus: ", err)
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 
 	err = conn.Hello()
 	if err != nil {
 		log.Println("Failed hello to system bus: ", err)
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 
@@ -264,7 +270,7 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 
 	// container already exists?
 	dnsContainer, err := s.docker.ContainerInspect(s.ctx, containerName)
-	if err != nil && client.IsErrNetworkNotFound(err) {
+	if err != nil && client.IsErrNotFound(err) {
 		// not found; create container using own image and bindings, using "dns" command
 		log.Printf("Creating %s container...\n", containerName)
 
@@ -299,7 +305,9 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 			},
 		}
 
-		newContainer, err := s.docker.ContainerCreate(s.ctx, config, hostConfig, networkingConfig, containerName)
+		var platform *specs.Platform
+
+		newContainer, err := s.docker.ContainerCreate(s.ctx, config, hostConfig, networkingConfig, platform, containerName)
 		if err != nil {
 			log.Println("Failed to create container: ", err)
 			return err
