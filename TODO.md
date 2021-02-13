@@ -14,14 +14,13 @@
 
 ## CI/CD
 
-- [x] ~travis-ci~
+- [x] travis-ci
+- [x] docker image publish automation
 - [ ] github actions
-- [ ] docker image publish automation
 
 ## Bugs
 
 - [x] handle exit signals with docker stop - PID 1 problem
-  - https://github.com/krallin/tini#existing-entrypoint
 - [x] handle system suspend/resume/hibernate
 
 ## Features
