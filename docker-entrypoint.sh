@@ -12,9 +12,9 @@ case $cmd in
 	;;
 
 	dns)
-		# delegate to supervisord to run in DNS mode
+		# delegate to s6 to run in DNS mode
 		# runs "ldhdns dns" and "dnsmasq" services
-		exec supervisord --nodaemon --configuration /etc/ldhdns/supervisor/supervisord.conf
+		exec /init
 	;;
 
   *)

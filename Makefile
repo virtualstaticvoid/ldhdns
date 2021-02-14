@@ -18,6 +18,7 @@ build:
 		--tag $(DOCKER_REPO)/$(IMAGE):latest \
 		--tag $(DOCKER_REPO)/$(IMAGE):$(VERSION) \
 		--build-arg VERSION=$(VERSION) \
+		--build-arg S6_VERSION=$(S6_VERSION) \
 		--label org.opencontainers.image.title="ldhdns" \
 		--label org.opencontainers.image.description="A developer tool for providing DNS for Docker containers running on a local development host." \
 		--label org.opencontainers.image.source="$(MAINTAINER_URL)" \

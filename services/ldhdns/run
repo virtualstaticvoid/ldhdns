@@ -1,0 +1,3 @@
+#!/usr/bin/with-contenv sh
+echo >&2 "Starting ldhdns service"
+exec ldhdns dns --domain-suffix "${LDHDNS_DOMAIN_SUFFIX}" --subdomain-label "${LDHDNS_SUBDOMAIN_LABEL}" --dnsmasq-hostsdir "${DNSMASQ_HOSTSDIR}" --dnsmasq-pidfile "${DNSMASQ_PIDFILE}"

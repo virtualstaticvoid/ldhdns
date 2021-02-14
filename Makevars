@@ -10,3 +10,5 @@ MAINTAINER:=Chris Stefano <virtualstaticvoid@gmail.com>
 MAINTAINER_URL:=https://github.com/virtualstaticvoid/ldhdns
 GIT_SHA:=$(shell git rev-parse --short HEAD)
 BUILD_DATE:=$(shell date -u '+%Y-%m-%d %H:%M:%S %z')
+
+S6_VERSION:=v2.2.0.1

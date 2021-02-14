@@ -18,19 +18,22 @@ RUN go build -ldflags="-X go.virtualstaticvoid.com/ldhdns/cmd.Version=$VERSION" 
 FROM debian:buster
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG S6_VERSION
 
 RUN apt-get update -qq \
  && apt-get install -qy \
+      curl \
       dnsmasq \
       dumb-init \
-      supervisor \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
+RUN curl --fail --silent -L https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-amd64.tar.gz | \
+    tar xzvf - -C /
+
 COPY --from=builder /go/bin/ldhdns /usr/bin/
 
-RUN mkdir -p /etc/ldhdns
-COPY supervisor /etc/ldhdns/supervisor/
+COPY services /etc/services.d/
 COPY dnsmasq /etc/ldhdns/dnsmasq/
 
 COPY docker-entrypoint.sh /usr/bin/docker-entrypoint.sh
