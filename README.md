@@ -59,7 +59,7 @@ docker run \
   virtualstaticvoid/ldhdns:latest
 ```
 
-**Please inspect the code in the [this repository][ldhdns] and build the image yourself if you are concerned about security.**
+**Please inspect the [code][ldhdns] and build the image yourself if you are concerned about security.**
 
 ### Your Containers
 
@@ -84,8 +84,7 @@ services:
       "dns.ldh/subdomain": "foo"
 ```
 
-*Note*: Make sure to use the same label key you provided in the `LDHDNS_SUBDOMAIN_LABEL` environment variable.
-*Note*: Labels cannot be added to existing containers so you will need to re-create them to apply the label.
+*Note*: Make sure to use the same label key you provided in the `LDHDNS_SUBDOMAIN_LABEL` environment variable. Labels cannot be added to existing containers so you will need to re-create them to apply the label.
 
 Now the subdomain will be resolvable locally to the container IP address.
 
@@ -128,36 +127,34 @@ A web browser connects to the Web Application and the REST API, and the API conn
 In development, to access these services there are number of options:
 
 1. Map the container ports to host ports and access the services using `localhost` together with the host port number,
-2. Obtain the IP address of each respective container and container port number,
-3. Using domain names instead of IP addresses, adding them to your `/etc/hosts` to map each container IP address to a name.
+2. Obtain the IP address of each respective container and access the services using the IP address together with the container port number,
+3. Using domain names instead of IP addresses, adding them to your `/etc/hosts`, mapping each container IP address to a name.
 
-Each of these methods have difficulties, short-comings and implications, such as when:
+Each of these methods have difficulties, short-comings and implications, such as:
 
-* Multiple services using the same port number.
-* Steps needed to get the IP addresses of containers.
+* No consistent convention for mapping container ports to host ports.
+* Potential host port clashes when running multiple instances of a container.
+* Manual steps needed to get the IP addresses of containers.
 * Editing `/etc/hosts` requires root permissions.
-* Manual updates to `/etc/hosts` needed when an IP address changes.
-* Running containers with a static IP address so that `/etc/hosts` doesn't need to change.
-* Using complicated scripts to inspect containers to get their IP addresses, write out configuration files and restart services.
-* Different code paths to handle differences between development and deployed environments.
-* Having to register your own domain name.
-* Managing DNS records.
-* Waiting for DNS updates to take effect.
+* Manual updates to `/etc/hosts` required each time an IP address changes.
 * Portability issues for other developers on their machines when collaborating on projects.
+* Configuration differences on the host vs within the container.
 
-Furthermore, host to container port mappings are typically used, so it could be `8080` to `80` for the Web Application and `8090` to `80` for the REST API. The SPA Web Application would therefore have to be configured to use `http://localhost:8090` to access the API. However the API connects directly to PostgreSQL so it would have to configured to use the PostgreSQL container name.
+Furthermore, when host to container port mappings are typically used, the mapping could be `8080` to `80` for the Web Application and `8090` to `80` for the REST API. The SPA Web Application would therefore have to be configured to use `http://localhost:8090` to access the API. However the API connects directly to PostgreSQL so it would have to configured to use the PostgreSQL container name.
 
 You may also want to run some ad-hoc SQL queries whilst debugging, so connecting a tool such as `psql` would require a further port mapping of `8432` to `5432`.
 
 As you can see this setup gets messy and complicated quickly and isn't a great developer experience!
 
-Now imagine adding SSL ports (`443`) so that you can debug under more production like conditions; the situation gets nasty fast. Don't even think about having more than one instance of a container, such as when using the `docker-compose up --scale` to add more container instances of a service!
+Now imagine adding SSL ports (`443`) so that you can debug under more production like conditions with TLS certificates; the situation gets nasty fast. Don't even think about having more than one instance of a container, such as when using the `docker-compose up --scale api=N` to add more container instances of a service!
 
 ## Solution
 
-`ldhdns` provides a simple solution. It monitors running containers for labels which contain the domain name to use and configures and runs a lightweight DNS server. These domain names are dynamically resolveable on the host and from within containers, so that you can use the same fully qualified domain names in each scenario and use the _actual service ports_ just like in production.
+`ldhdns` provides a simple solution. It monitors running containers, looking for labels which contain the domain name to use, and configures and runs a lightweight DNS server.
 
-In the above mentioned example, you could use `web`, `api` and `pgsql` as the subdomains for the respective containers. The Web Application URL would be `http://web.ldh.dns`, the REST API would be `http://api.ldh.dns` and the PostgreSQL service would be `pgsql.ldh.dns`.
+The domain names are dynamically resolveable on the host _and_ from within containers, so that you can use the same fully qualified domain names in each scenario and use the _actual service ports_ just like in production.
+
+In the above mentioned example, you could use `web`, `api` and `pgsql` as the subdomains for the respective containers, making the Web Application and REST API accessible via `http://web.ldh.dns` and `http://api.ldh.dns` respectively, and the PostgreSQL service accessible via `pgsql.ldh.dns`.
 
 ![](doc/example-after.svg)
 
@@ -169,45 +166,11 @@ The following diagram illustrates the components which make up the solution, and
 
 ![](doc/architecture.svg)
 
-The controller creates and configures a Docker bridge network and configures `systemd-resolved`. It spawns the second service, which monitors the Docker API for when containers are started or stopped; creating and removing DNS records accordingly; and runs `dnsmasq` to resolve DNS queries for `A` (ipv4) and `AAAA` (ipv6) type records for the given domain.
+The controller creates and configures a Docker bridge network and configures `systemd-resolved` to [resolve DNS queries][resolved-config] for the configured domain name. It spawns a second container to monitors the Docker API for when containers are started or stopped, creating and removing DNS records accordingly, and runs `dnsmasq` to resolve DNS queries for `A` (ipv4) and `AAAA` (ipv6) type records for the configured domain.
 
 ## Building
 
 Use `make` to build the `ldhdns` docker image.
-
-## Debugging
-
-You can query the DNS records to check that it works by using `dig`:
-
-```
-dig -t ANY web.ldh.dns
-
-...
-; <<>> DiG 9.16.1-Ubuntu <<>> -t A web.ldh.dns
-;; global options: +cmd
-;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: ...
-...
-
-;; ANSWER SECTION:
-web.ldh.dns.     15 IN  A 172.18.0.3
-web.ldh.dns.     15 IN  AAAA fc00:f853:ccd:e793::3
-
-...
-```
-
-And cross-checking with the IP addresses of each running container labelled with `dns.ldh/subdomain`:
-
-```
-docker ps --filter='label=dns.ldh/subdomain=web' --format "{{.ID}}" | \
-  xargs docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} [{{.GlobalIPv6Address}}]{{end}}' --
-
-...
-172.18.0.3 [fc00:f853:ccd:e793::3]
-```
-
-
-
 
 ## Inspiration
 
@@ -241,5 +204,6 @@ MIT License. Copyright (c) 2020 Chris Stefano. See [LICENSE](LICENSE) for detail
 [jonathanio]: https://github.com/jonathanio/update-systemd-resolved
 [ldhdns]: https://github.com/virtualstaticvoid/ldhdns
 [programster]: https://github.com/programster/docker-dnsmasq
+[resolved-config]: https://www.freedesktop.org/software/systemd/man/systemd-resolved.service.html#Protocols%20and%20Routing
 [resolved]: https://www.freedesktop.org/wiki/Software/systemd/resolved/
 [stackexchange]: https://unix.stackexchange.com/a/442599

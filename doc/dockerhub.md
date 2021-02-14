@@ -36,9 +36,24 @@ Additionally, the network ID, domain name suffix and subdomain label can be conf
 * `LDHDNS_DOMAIN_SUFFIX` for domain name suffix to use. The default is `ldh.dns`.
 * `LDHDNS_SUBDOMAIN_LABEL` for label used by containers. The default is `dns.ldh/subdomain`.
 
-**Tip:** If you are using a real domain name, be sure to use a subdomain such as `ldh` to avoid any clashes with it's public DNS. E.g. Provide `--env LDHDNS_DOMAIN_SUFFIX=ldh.example.com` to the `docker run` command.
+**Tip:** If you are using a real domain name, be sure to use a subdomain such as `ldh` to avoid any clashes with it's public DNS.
 
-**Please inspect the code in the [`ldhdns` repository][ldhdns] and build the image yourself if you are concerned about security.**
+You can provide your domain name via the `LDHDNS_DOMAIN_SUFFIX` environment variable as follows:
+
+```
+docker run \
+  --name ldhdns \
+  --env LDHDNS_DOMAIN_SUFFIX=ldh.example.com \
+  --detach \
+  --network host \
+  --security-opt "apparmor=unconfined" \
+  --volume "/var/run/docker.sock:/tmp/docker.sock" \
+  --volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
+  --restart unless-stopped \
+  virtualstaticvoid/ldhdns:latest
+```
+
+**Please inspect the [code][ldhdns] and build the image yourself if you are concerned about security.**
 
 ### Your Containers
 
@@ -49,7 +64,7 @@ This subdomain will be prepended to the domain name in the `LDHDNS_DOMAIN_SUFFIX
 To apply the label to a container using the command line:
 
 ```
-docker run -it --label "dns.ldh/subdomain=foo" nginx
+docker run -it --rm --label "dns.ldh/subdomain=foo" nginx
 ```
 
 Or with Docker Compose:
@@ -63,9 +78,37 @@ services:
       "dns.ldh/subdomain": "foo"
 ```
 
-Make sure to use the same label key you provided in the `LDHDNS_SUBDOMAIN_LABEL` environment variable.
+*Note*: Make sure to use the same label key you provided in the `LDHDNS_SUBDOMAIN_LABEL` environment variable. Labels cannot be added to existing containers so you will need to re-create them to apply the label.
 
-*Note*: Labels cannot be added to existing containers so you will need to re-create them to apply the label.
+Now the subdomain will be resolvable locally to the container IP address.
+
+```
+$ dig -t A foo.ldh.dns
+
+; <<>> DiG 9.16.1-Ubuntu <<>> -t A foo.ldh.dns
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 61163
+...
+
+;; ANSWER SECTION:
+foo.ldh.dns.    15  IN  A 172.17.0.2
+
+...
+```
+
+And you can go ahead and consume the service.
+
+```
+$ curl http://foo.ldh.dns
+
+<!DOCTYPE html>
+<html>
+...
+<h1>Welcome to nginx!</h1>
+...
+</html>
+```
 
 ## License
 
