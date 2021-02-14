@@ -1,4 +1,4 @@
-VERSION?=0.1.9
+VERSION?=0.1.10
 IMAGE:=ldhdns
 DOCKER_REPO:=virtualstaticvoid
 
