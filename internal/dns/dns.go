@@ -66,7 +66,7 @@ func Run(domainSuffix string, subDomainLabel string, hostsPath string, pidFile s
 
 func newServer(domainSuffix string, subDomainLabel string, hostsPath string, pidFile string) (*server, error) {
 	// connect to the docker API - uses DOCKER_HOST environment variable
-	docker, err := client.NewEnvClient()
+	docker, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		log.Println("Failed to connect docker client: ", err)
 		return nil, err
