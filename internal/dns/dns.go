@@ -131,7 +131,7 @@ func (s *server) runEventLoop() error {
 					return
 				}
 			case err := <-errorsChan:
-				if err == io.EOF {
+				if err == io.EOF || err == context.Canceled {
 					log.Println("Event loop shutting down")
 					result <- nil
 				} else {
