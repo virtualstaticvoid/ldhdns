@@ -8,13 +8,13 @@ case $cmd in
 
 	controller)
 		# run in controller mode
-		ldhdns controller --network-id $LDHDNS_NETWORK_ID --domain-suffix $LDHDNS_DOMAIN_SUFFIX --subdomain-label $LDHDNS_SUBDOMAIN_LABEL
+		exec ldhdns controller --network-id $LDHDNS_NETWORK_ID --domain-suffix $LDHDNS_DOMAIN_SUFFIX --subdomain-label $LDHDNS_SUBDOMAIN_LABEL
 	;;
 
 	dns)
 		# delegate to supervisord to run in DNS mode
 		# runs "ldhdns dns" and "dnsmasq" services
-		supervisord --nodaemon --configuration /etc/ldhdns/supervisor/supervisord.conf
+		exec supervisord --nodaemon --configuration /etc/ldhdns/supervisor/supervisord.conf
 	;;
 
   *)
