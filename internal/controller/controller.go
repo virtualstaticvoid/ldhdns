@@ -23,6 +23,18 @@ import (
 const (
 	dnsContainerLabelPrefix = "dns.ldh"
 	containerStopTimeout    = 30 * time.Second
+	dbusChannelBufferSize   = 10
+
+	dbusResolveInterface        = "org.freedesktop.resolve1"
+	dbusResolveManagerInterface = "org.freedesktop.resolve1.Manager"
+	dbusResolvePath             = "/org/freedesktop/resolve1"
+	dbusResolveGetLinkMethod    = "org.freedesktop.resolve1.Manager.GetLink"
+	dbusResolveSetDNSMethod     = "org.freedesktop.resolve1.Link.SetDNS"
+	dbusResolveSetDomainsMethod = "org.freedesktop.resolve1.Link.SetDomains"
+
+	dbusBecomeMonitorMethod     = "org.freedesktop.DBus.Monitoring.BecomeMonitor"
+	dbusLoginManagerInterface   = "org.freedesktop.login1.Manager"
+	dbusPrepareForSleepSignal   = "PrepareForSleep"
 )
 
 type server struct {
@@ -435,8 +447,6 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP) (dbus.BusObject, err
 		return nil, fmt.Errorf("failed to get link: %s", err)
 	}
 
-	// merge with existing addresses & domains?
-
 	var addresses []Address
 	if address.To4() != nil {
 		addresses = append(addresses, Address{
@@ -450,22 +460,22 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP) (dbus.BusObject, err
 		})
 	}
 
+	// update link with new DNS server address
+	link := s.systemBus.Object(dbusResolveInterface, linkPath)
+	err = link.Call(dbusResolveSetDNSMethod, callFlags, addresses).Store()
+	if err != nil {
+		log.Println("Failed to set link DNS: ", err)
+		return nil, fmt.Errorf("failed to set link DNS: %s", err)
+	}
+
 	var domains []Domain
 	domains = append(domains, Domain{
 		Name:    s.domainSuffix,
 		Routing: true,
 	})
 
-	// update link with new DNS server address
-	link := s.systemBus.Object("org.freedesktop.resolve1", linkPath)
-	err = link.Call("org.freedesktop.resolve1.Link.SetDNS", callFlags, addresses).Store()
-	if err != nil {
-		log.Println("Failed to set link DNS: ", err)
-		return nil, fmt.Errorf("failed to set link DNS: %s", err)
-	}
-
 	// update link with routing domain name
-	err = link.Call("org.freedesktop.resolve1.Link.SetDomains", callFlags, domains).Store()
+	err = link.Call(dbusResolveSetDomainsMethod, callFlags, domains).Store()
 	if err != nil {
 		log.Printf("Failed to set link Domain %s: %s\n", s.domainSuffix, err)
 		return nil, fmt.Errorf("failed to set link Domain: %s", err)
@@ -521,13 +531,13 @@ func (s *server) makeSystemResumeChannel() (chan bool, error) {
 	}
 	var flag uint = 0
 
-	err = conn.BusObject().Call("org.freedesktop.DBus.Monitoring.BecomeMonitor", 0, rules, flag).Store()
+	err = conn.BusObject().Call(dbusBecomeMonitorMethod, 0, rules, flag).Store()
 	if err != nil {
 		log.Println("Failed to become monitor: ", err)
 		return nil, fmt.Errorf("failed to become monitor: %s", err)
 	}
 
-	bus := make(chan *dbus.Message, 10)
+	bus := make(chan *dbus.Message, dbusChannelBufferSize)
 	conn.Eavesdrop(bus)
 
 	c := make(chan bool)
@@ -541,10 +551,10 @@ func (s *server) makeSystemResumeChannel() (chan bool, error) {
 
 				resuming := !msg.Body[0].(bool)
 				if resuming {
-					log.Println("Resuming")
+					log.Println("System Resuming...")
 					c <- true
 				} else {
-					log.Println("System suspending")
+					log.Println("System Suspending...")
 				}
 			}
 		}
