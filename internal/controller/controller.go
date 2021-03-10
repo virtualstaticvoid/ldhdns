@@ -37,6 +37,7 @@ type server struct {
 	containerNetworkID string
 	dnsContainer       *types.ContainerJSON
 	systemBus          *dbus.Conn
+	linkIndex          int
 	linkObject         dbus.BusObject
 }
 
@@ -367,17 +368,18 @@ func (s *server) applyDNSConfiguration() error {
 
 	// get the index of the network interface on the host
 	// this is why the process needs to run on the host network
-	index, name, err := s.findNetworkInterfaceIndex(gwIpAddress)
+	linkIndex, name, err := s.findNetworkInterfaceIndex(gwIpAddress)
 	if err != nil {
 		log.Printf("Failed to get network interface for %s: %s\n", gwIpAddress, err)
 		return err
 	}
+	s.linkIndex = linkIndex
 
 	log.Printf("Applying configuration to %q network.\n", name)
 
 	// register link DNS for this IP
 	// keep the link object for the clean up later
-	s.linkObject, err = s.setLinkDNSAndRoutingDomain(ipAddress, index)
+	s.linkObject, err = s.setLinkDNSAndRoutingDomain(ipAddress)
 	if err != nil {
 		log.Println("Failed to set DNS on link: ", err)
 		return err
@@ -407,7 +409,7 @@ func (s *server) findNetworkInterfaceIndex(ip net.IP) (int, string, error) {
 	return 0, name, errors.New("unable to determine index for network interface")
 }
 
-func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.BusObject, error) {
+func (s *server) setLinkDNSAndRoutingDomain(address net.IP) (dbus.BusObject, error) {
 	// see LinkObject for interface details
 	// https://www.freedesktop.org/wiki/Software/systemd/resolved/
 
@@ -426,8 +428,8 @@ func (s *server) setLinkDNSAndRoutingDomain(address net.IP, index int) (dbus.Bus
 	var linkPath dbus.ObjectPath
 	var callFlags dbus.Flags
 
-	manager := s.systemBus.Object("org.freedesktop.resolve1", "/org/freedesktop/resolve1")
-	err := manager.Call("org.freedesktop.resolve1.Manager.GetLink", callFlags, index).Store(&linkPath)
+	manager := s.systemBus.Object(dbusResolveInterface, dbusResolvePath)
+	err := manager.Call(dbusResolveGetLinkMethod, callFlags, s.linkIndex).Store(&linkPath)
 	if err != nil {
 		log.Println("Failed to get link: ", err)
 		return nil, fmt.Errorf("failed to get link: %s", err)
