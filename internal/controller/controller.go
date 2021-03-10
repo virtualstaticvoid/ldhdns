@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -35,6 +36,8 @@ const (
 	dbusBecomeMonitorMethod     = "org.freedesktop.DBus.Monitoring.BecomeMonitor"
 	dbusLoginManagerInterface   = "org.freedesktop.login1.Manager"
 	dbusPrepareForSleepSignal   = "PrepareForSleep"
+	dbusPropertiesInterface     = "org.freedesktop.DBus.Properties"
+	dbusPropertiesChangedSignal = "PropertiesChanged"
 )
 
 type server struct {
@@ -489,8 +492,8 @@ func (s *server) runEventLoop() error {
 	// channel for system interrupts
 	interrupt := s.makeInterruptChannel()
 
-	// channel for system resume
-	systemResume, err := s.makeSystemResumeChannel()
+	// channel for system events
+	systemEvents, err := s.makeSystemEventsChannel()
 	if err != nil {
 		log.Println("Failed to setup DBus subscription: ", err)
 		return err
@@ -498,7 +501,7 @@ func (s *server) runEventLoop() error {
 
 	for {
 		select {
-		case <-systemResume:
+		case <-systemEvents:
 			log.Println("Re-applying DNS change...")
 			// re-apply DNS configuration after system resume
 			err = s.applyDNSConfiguration()
@@ -519,15 +522,27 @@ func (s *server) makeInterruptChannel() chan os.Signal {
 	return c
 }
 
-func (s *server) makeSystemResumeChannel() (chan bool, error) {
+func (s *server) makeSystemEventsChannel() (chan bool, error) {
+	// see BecomeMonitor for interface details
+	// https://dbus.freedesktop.org/doc/dbus-specification.html#bus-messages-become-monitor
+
 	conn, err := dbus.SystemBus()
 	if err != nil {
 		log.Println("Failed to connect to system bus: ", err)
 		return nil, fmt.Errorf("failed to connect to system bus: %s", err)
 	}
 
-	var rules = []string{
-		"type='signal',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'",
+	rules := []string{
+		// match system suspend/resume via LoginManager
+		signalMatchRule(
+			matchInterface(dbusLoginManagerInterface),
+			matchMember(dbusPrepareForSleepSignal)),
+
+		// match changes to link via properties interface
+		signalMatchRule(
+			matchInterface(dbusPropertiesInterface),
+			matchMember(dbusPropertiesChangedSignal),
+			matchPath(dbusResolvePath)),
 	}
 	var flag uint = 0
 
@@ -544,11 +559,30 @@ func (s *server) makeSystemResumeChannel() (chan bool, error) {
 
 	go func() {
 		for msg := range bus {
-			// even though monitor rules are set, check for specific message
-			// in testing sometimes random messages were delivered
-			if msg.Headers[dbus.FieldInterface].Value() == "org.freedesktop.login1.Manager" &&
-				msg.Headers[dbus.FieldMember].Value() == "PrepareForSleep" {
 
+			// even though monitor rules are set, check for expected message
+			// in testing sometimes different types of messages were delivered
+
+			var ok bool
+			var fieldPath, fieldInterface, fieldMember dbus.Variant
+
+			if fieldPath, ok = msg.Headers[dbus.FieldPath]; !ok {
+				goto done
+			}
+
+			if fieldInterface, ok = msg.Headers[dbus.FieldInterface]; !ok {
+				goto done
+			}
+
+			if fieldMember, ok = msg.Headers[dbus.FieldMember]; !ok {
+				goto done
+			}
+
+			// system resume message
+			if fieldInterface.Value() == dbusLoginManagerInterface &&
+				fieldMember.Value() == dbusPrepareForSleepSignal {
+
+				// false when system resuming
 				resuming := !msg.Body[0].(bool)
 				if resuming {
 					log.Println("System Resuming...")
@@ -556,7 +590,76 @@ func (s *server) makeSystemResumeChannel() (chan bool, error) {
 				} else {
 					log.Println("System Suspending...")
 				}
+				goto done
 			}
+
+			// network properties changed message
+			if fieldInterface.Value() == dbusPropertiesInterface &&
+				fieldMember.Value() == dbusPropertiesChangedSignal &&
+				fieldPath.Value() == dbus.ObjectPath(dbusResolvePath) {
+
+				//
+				// this is(?) a bit of a hack... to determine whether the DNS configuration
+				// on the network interface has been reverted, which seems to happen whenever
+				// there is a change to any other network interface. E.g. unplugging the ethernet
+				// cable or turning off WiFi causes our network configuration to be reverted.
+				//
+				// subscribing to PropertiesChanged on the org.freedesktop.DBus.Properties interface
+				// lets us know when changes happen, and the logic checks whether our network interface
+				// is missing from the list of DNS properties (on the respective link Index).
+				//
+				// https://dbus.freedesktop.org/doc/dbus-specification.html#standard-interfaces-properties
+				//
+				// message format:
+				//
+				//    org.freedesktop.DBus.Properties.PropertiesChanged (STRING interface_name,
+				//                                                       DICT<STRING,VARIANT> changed_properties,
+				//                                                       ARRAY<STRING> invalidated_properties);
+				//
+
+				var interfaceName string
+				var changedProperties map[string]dbus.Variant
+				var invalidatedProperties []string
+
+				if err := dbus.Store(msg.Body, &interfaceName, &changedProperties, &invalidatedProperties); err != nil {
+					log.Println("Failed to unpack properties changed message: ", err)
+					goto done
+				}
+
+				// double check...
+				if interfaceName != dbusResolveManagerInterface {
+					//log.Println("Error wrong interface ", interfaceName, ", expecting ", dbusResolveManagerInterface)
+					goto done
+				}
+
+				// only interested in the DNS property
+				if dnsPropList, ok := changedProperties["DNS"]; ok {
+
+					// property is @a(iiay)
+					dnsProps := dnsPropList.Value().([][]interface{})
+					for _, dnsProp := range dnsProps {
+
+						var linkIndex int32
+						var addressFamily int32
+						var ipAddress []uint8
+
+						if err := dbus.Store(dnsProp, &linkIndex, &addressFamily, &ipAddress); err != nil {
+							log.Println("Failed to unpack DNS properties: ", err)
+							goto done
+						}
+
+						// matches?
+						if linkIndex == int32(s.linkIndex) {
+							goto done
+						}
+					}
+
+					log.Println("Network change detected!")
+					c <- true
+				}
+			}
+
+		done:
 		}
 	}()
 
@@ -594,4 +697,46 @@ func (s *server) stopDNSContainer() error {
 	}
 
 	return nil
+}
+
+type matchOption struct {
+	key   string
+	value string
+}
+
+func matchType(value string) matchOption {
+	return matchOption{
+		key:   "type",
+		value: value,
+	}
+}
+
+func matchPath(value string) matchOption {
+	return matchOption{
+		key:   "path",
+		value: value,
+	}
+}
+
+func matchInterface(value string) matchOption {
+	return matchOption{
+		key:   "interface",
+		value: value,
+	}
+}
+
+func matchMember(value string) matchOption {
+	return matchOption{
+		key:   "member",
+		value: value,
+	}
+}
+
+func signalMatchRule(options ...matchOption) string {
+	options = append([]matchOption{matchType("signal")}, options...)
+	items := make([]string, 0, len(options))
+	for _, option := range options {
+		items = append(items, option.key+"='"+option.value+"'")
+	}
+	return strings.Join(items, ",")
 }
