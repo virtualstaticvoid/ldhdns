@@ -2,15 +2,12 @@
 ## explicit
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
-# github.com/bketelsen/crypt v0.0.3-0.20200106085610-5cbc8cc4026c
-## explicit
 # github.com/containerd/containerd v1.5.8
 ## explicit
 github.com/containerd/containerd/errdefs
 github.com/containerd/containerd/log
 github.com/containerd/containerd/platforms
 # github.com/docker/distribution v2.7.1+incompatible
-## explicit
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
 github.com/docker/distribution/registry/api/errcode
@@ -40,7 +37,6 @@ github.com/docker/go-connections/nat
 github.com/docker/go-connections/sockets
 github.com/docker/go-connections/tlsconfig
 # github.com/docker/go-units v0.4.0
-## explicit
 github.com/docker/go-units
 # github.com/godbus/dbus/v5 v5.0.6
 ## explicit
@@ -62,7 +58,6 @@ github.com/inconshreveable/mousetrap
 # github.com/morikuni/aec v1.0.0
 ## explicit
 # github.com/opencontainers/go-digest v1.0.0
-## explicit
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.2
 ## explicit
@@ -72,8 +67,6 @@ github.com/opencontainers/image-spec/specs-go/v1
 github.com/pkg/errors
 # github.com/sirupsen/logrus v1.8.1
 github.com/sirupsen/logrus
-# github.com/smartystreets/goconvey v1.6.4
-## explicit
 # github.com/spf13/cobra v1.3.0
 ## explicit
 github.com/spf13/cobra
@@ -126,5 +119,3 @@ google.golang.org/protobuf/types/descriptorpb
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
-# gotest.tools/v3 v3.0.3
-## explicit
