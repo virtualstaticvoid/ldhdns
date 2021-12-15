@@ -1,9 +1,5 @@
 # Local Docker Host DNS - ldhdns
 
-[![Build Status](https://travis-ci.org/virtualstaticvoid/ldhdns.svg?branch=master)](https://travis-ci.org/virtualstaticvoid/ldhdns)
-[![](https://images.microbadger.com/badges/image/virtualstaticvoid/ldhdns.svg)](https://microbadger.com/images/virtualstaticvoid/ldhdns)
-[![](https://images.microbadger.com/badges/version/virtualstaticvoid/ldhdns.svg)](https://microbadger.com/images/virtualstaticvoid/ldhdns)
-
 A developer tool for providing DNS for Docker containers running on a local development host.
 
 ## Requirements
