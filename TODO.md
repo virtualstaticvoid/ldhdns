@@ -14,8 +14,6 @@
 
 ## CI/CD
 
-- [x] travis-ci
-- [x] docker image publish automation
 - [ ] github actions
 
 ## Bugs
