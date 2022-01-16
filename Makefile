@@ -26,8 +26,7 @@ build:
 		--label org.opencontainers.image.url="$(MAINTAINER_URL)" \
 		--label org.opencontainers.image.created="$(BUILD_DATE)" \
 		--label org.opencontainers.image.version="$(VERSION)" \
-		--label org.opencontainers.image.revision="$(GIT_SHA)" \
-		--label build.logurl="$(TRAVIS_BUILD_WEB_URL)" \
+		--label org.opencontainers.image.revision="$(GIT_SHA)"
 		.
 
 .PHONY: debug
