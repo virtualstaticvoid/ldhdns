@@ -68,3 +68,7 @@ uninstall:
 	@docker stop ldhdns_dns || true
 	@docker rm --force ldhdns || true
 	@docker network rm ldhdns || true
+
+# adapted from https://stackoverflow.com/a/48782113/30521
+env-%:
+	@echo '$($*)'
