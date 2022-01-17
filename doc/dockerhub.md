@@ -118,5 +118,5 @@ MIT License. Copyright (c) 2020 Chris Stefano. See [LICENSE][license] for detail
 
 [docker]: https://docs.docker.com/get-started
 [ldhdns]: https://github.com/virtualstaticvoid/ldhdns
-[license]: https://github.com/virtualstaticvoid/ldhdns/blob/master/LICENSE
+[license]: https://github.com/virtualstaticvoid/ldhdns/blob/main/LICENSE
 [resolved]: https://www.freedesktop.org/wiki/Software/systemd/resolved/
