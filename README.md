@@ -29,10 +29,10 @@ docker run \
   --volume "/var/run/docker.sock:/tmp/docker.sock" \
   --volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
   --restart unless-stopped \
-  virtualstaticvoid/ldhdns:latest
+  ghcr.io/virtualstaticvoid/ldhdns:latest
 ```
 
-Visit [hub.docker.com/r/virtualstaticvoid/ldhdns][docker-hub] for available image tags.
+Visit the [`virtualstaticvoid/ldhdns` image repository][ghcr] for available image tags.
 
 Additionally, the network ID, domain name suffix and subdomain label can be configured with environment variables:
 
@@ -54,7 +54,7 @@ docker run \
   --volume "/var/run/docker.sock:/tmp/docker.sock" \
   --volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
   --restart unless-stopped \
-  virtualstaticvoid/ldhdns:latest
+  ghcr.io/virtualstaticvoid/ldhdns:latest
 ```
 
 **Please inspect the [code][ldhdns] and build the image yourself if you are concerned about security.**
@@ -197,8 +197,8 @@ MIT License. Copyright (c) 2020 Chris Stefano. See [LICENSE](LICENSE) for detail
 [dnsmasq-tips]: https://www.linux.com/topic/networking/advanced-dnsmasq-tips-and-tricks/
 [dnsmasq]: http://www.thekelleys.org.uk/dnsmasq/doc.html
 [docker-compose]: https://docs.docker.com/compose/install
-[docker-hub]: https://hub.docker.com/repository/docker/virtualstaticvoid/ldhdns
 [docker]: https://docs.docker.com/get-started
+[ghcr]: https://github.com/virtualstaticvoid/ldhdns/pkgs/container/ldhdns
 [jonathanio]: https://github.com/jonathanio/update-systemd-resolved
 [ldhdns]: https://github.com/virtualstaticvoid/ldhdns
 [programster]: https://github.com/programster/docker-dnsmasq
