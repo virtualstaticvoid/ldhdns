@@ -33,7 +33,8 @@ Start the controller, attaching it to the host network, as follows:
 
 **Security Note:** The container mounts the Docker socket so that it can consume the Docker API
 and it is run with the `apparmor=unconfined` security option and mounts the SystemBus socket so
-that it is able to configure `systemd-resolved` dynamically.
+that it is able to configure `systemd-resolved` dynamically. Please inspect the [code][ldhdns] 
+and build the image yourself if you are concerned about security.
 
 ```bash
 LDHDNS_CONTAINER_NAME=ldhdns
@@ -51,9 +52,6 @@ docker run \
 ```
 
 Visit the [`virtualstaticvoid/ldhdns` image repository][ghcr] for available image tags.
-
-**NOTE:** Please inspect the [code][ldhdns] and build the image yourself if you are concerned
-about security, as the controller runs with elevated permissions and access to Docker.
 
 ### Configuration
 
