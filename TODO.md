@@ -2,7 +2,7 @@
 
 ## General
 
-- [ ] complete readme
+- [x] complete readme
 - [ ] refactor logging go code
 - [ ] blog post
 
