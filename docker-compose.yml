@@ -14,6 +14,12 @@ services:
   # docker-compose logs --follow ldhdns
   ldhdns:
     image: ldhdns:latest
+
+    # !!!
+    # NB: this may conflict with the value in Makevars; update it if LDHDNS_CONTAINER_NAME is changed
+    # !!!
+    container_name: ldhdns
+
     network_mode: host
     security_opt:
     - "apparmor=unconfined"

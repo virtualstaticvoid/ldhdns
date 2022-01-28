@@ -16,7 +16,7 @@ func NewCmdController() *cobra.Command {
 		Short: "Runs ldhdns in controller mode",
 		Args:  cobra.NoArgs,
 		Run: func(_ *cobra.Command, args []string) {
-			if err := controller.Run(networkId, domainSuffix, subDomainLabel); err != nil {
+			if err := controller.Run(networkId, domainSuffix, subDomainLabel, containerName); err != nil {
 				log.Fatal(err)
 			}
 		},
@@ -39,6 +39,12 @@ func NewCmdController() *cobra.Command {
 		"subdomain-label",
 		defaultSubDomainLabel,
 		"Name of the label used to provide the sub-domain of a container.")
+
+	cmd.Flags().StringVar(
+		&containerName,
+		"container-name",
+		defaultContainerName,
+		"Name of the container running the controller.")
 
 	return cmd
 }

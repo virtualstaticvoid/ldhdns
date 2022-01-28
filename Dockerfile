@@ -48,6 +48,7 @@ ENV DNSMASQ_LOCAL_TTL=15
 ENV LDHDNS_NETWORK_ID=ldhdns
 ENV LDHDNS_DOMAIN_SUFFIX=ldh.dns
 ENV LDHDNS_SUBDOMAIN_LABEL=dns.ldh/subdomain
+ENV LDHDNS_CONTAINER_NAME=ldhdns
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "docker-entrypoint.sh"]
 CMD ["controller"]

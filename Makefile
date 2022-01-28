@@ -26,18 +26,22 @@ build:
 		--label org.opencontainers.image.url="$(MAINTAINER_URL)" \
 		--label org.opencontainers.image.created="$(BUILD_DATE)" \
 		--label org.opencontainers.image.version="$(VERSION)" \
-		--label org.opencontainers.image.revision="$(GIT_SHA)"
+		--label org.opencontainers.image.revision="$(GIT_SHA)" \
 		.
 
+.PHONY: .env
+.env:
+
+	@# write configuration env vars file
+	@echo "LDHDNS_NETWORK_ID=$(LDHDNS_NETWORK_ID)" 						 > .env
+	@echo "LDHDNS_DOMAIN_SUFFIX=$(LDHDNS_DOMAIN_SUFFIX)" 			>> .env
+	@echo "LDHDNS_SUBDOMAIN_LABEL=$(LDHDNS_SUBDOMAIN_LABEL)" 	>> .env
+	@echo "LDHDNS_CONTAINER_NAME=$(LDHDNS_CONTAINER_NAME)" 	  >> .env
+
 .PHONY: debug
-debug:
+debug: .env
 
-	@# write env vars
-	@echo "NETWORK_ID=$(NETWORK_ID)" 						 > .env
-	@echo "DOMAIN_SUFFIX=$(DOMAIN_SUFFIX)" 			>> .env
-	@echo "SUBDOMAIN_LABEL=$(SUBDOMAIN_LABEL)" 	>> .env
-
-	docker-compose up --detach
+	docker-compose up
 
 .PHONY: publish
 publish:
@@ -46,15 +50,13 @@ publish:
 	docker push $(DOCKER_REPO)/$(IMAGE):$(VERSION)
 
 .PHONY: install
-install: build
+install: build .env
 
 	docker run \
-		--name ldhdns \
+		--name $(LDHDNS_CONTAINER_NAME) \
 		--detach \
 		--network host \
-		--env "LDHDNS_NETWORK_ID=$(NETWORK_ID)" \
-		--env "LDHDNS_DOMAIN_SUFFIX=$(DOMAIN_SUFFIX)" \
-		--env "LDHDNS_SUBDOMAIN_LABEL=$(SUBDOMAIN_LABEL)" \
+		--env-file .env \
 		--security-opt "apparmor=unconfined" \
 		--volume "/var/run/docker.sock:/tmp/docker.sock" \
 		--volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \
@@ -64,11 +66,12 @@ install: build
 .PHONY: uninstall
 uninstall:
 
-	@docker stop ldhdns || true
-	@docker stop ldhdns_dns || true
-	@docker rm --force ldhdns || true
-	@docker network rm ldhdns || true
+	@docker stop $(LDHDNS_CONTAINER_NAME)       || true
+	@docker stop $(LDHDNS_CONTAINER_NAME)_dns   || true
+	@docker rm --force $(LDHDNS_CONTAINER_NAME) || true
+	@docker network rm $(LDHDNS_CONTAINER_NAME) || true
 
 # adapted from https://stackoverflow.com/a/48782113/30521
+# used by the `Load Makefile.vars` build step of GitHub Actions
 env-%:
 	@echo '$($*)'

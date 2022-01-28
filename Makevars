@@ -2,13 +2,15 @@ VERSION?=0.1.14
 IMAGE:=ldhdns
 DOCKER_REPO:=virtualstaticvoid
 
-NETWORK_ID?=ldhdns
-DOMAIN_SUFFIX?=ldh.dns
-SUBDOMAIN_LABEL?=dns.ldh/subdomain
-
 MAINTAINER:=Chris Stefano <virtualstaticvoid@gmail.com>
 MAINTAINER_URL:=https://github.com/virtualstaticvoid/ldhdns
-GIT_SHA:=$(shell git rev-parse --short HEAD)
+GIT_SHA:=$(shell git describe --match=NeVeRmAtCh --always --abbrev=40 --dirty)
 BUILD_DATE:=$(shell date -u '+%Y-%m-%d %H:%M:%S %z')
 
 S6_VERSION:=v2.2.0.3
+
+# ldhdns configuration
+LDHDNS_NETWORK_ID?=ldhdns
+LDHDNS_DOMAIN_SUFFIX?=ldh.dns
+LDHDNS_SUBDOMAIN_LABEL?=dns.ldh/subdomain
+LDHDNS_CONTAINER_NAME=ldhdns
