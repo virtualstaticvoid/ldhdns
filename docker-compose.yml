@@ -1,14 +1,4 @@
 ---
-networks:
-  altnet:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      driver: default
-      config:
-      - subnet: 172.30.0.0/24
-      - subnet: 2001:3200:3200::/64
-
 services:
 
   # docker-compose logs --follow ldhdns
@@ -36,8 +26,6 @@ services:
   # curl -v http://api.ldh.dns
   api:
     image: nginx:latest
-    networks:
-      - altnet
     labels:
       "dns.ldh/subdomain": "api"
 
@@ -46,5 +34,17 @@ services:
     image: postgres:latest
     environment:
       POSTGRES_PASSWORD: "p@ssw0rd"
+    networks:
+      - backend
     labels:
       "dns.ldh/subdomain": "pgsql"
+
+networks:
+  backend:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.30.0.0/24
+      - subnet: 2001:3200:3200::/64
