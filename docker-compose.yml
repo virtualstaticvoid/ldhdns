@@ -17,15 +17,20 @@ services:
     - "/var/run/docker.sock:/tmp/docker.sock"
     - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
 
-  # xdg-open http://web.ldh.dns
+  # curl -v http://web.ldh.dns
   web:
     image: nginx:latest
+    networks:
+      - frontend
     labels:
       "dns.ldh/subdomain": "web"
 
   # curl -v http://api.ldh.dns
   api:
     image: nginx:latest
+    networks:
+      - frontend
+      - backend
     labels:
       "dns.ldh/subdomain": "api"
 
@@ -40,11 +45,20 @@ services:
       "dns.ldh/subdomain": "pgsql"
 
 networks:
-  backend:
+  frontend:
     driver: bridge
     enable_ipv6: true
     ipam:
       driver: default
       config:
       - subnet: 172.30.0.0/24
-      - subnet: 2001:3200:3200::/64
+      - subnet: 2001:3000:3000::/64
+
+  backend:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.31.0.0/24
+      - subnet: 2001:3100:3100::/64
