@@ -11,6 +11,7 @@ const (
 	defaultSubDomainLabel        = "dns.ldh/subdomain"
 	defaultDnsmasqHostsDirectory = "/etc/ldhdns/dnsmasq/hosts.d"
 	defaultDnsmasqPidFile        = "/var/run/dnsmasq.pid"
+	defaultContainerName         = "ldhdns"
 )
 
 var (
@@ -20,6 +21,7 @@ var (
 	subDomainLabel        string
 	dnsmasqHostsDirectory string
 	dnsmasqPidFile        string
+	containerName         string
 
 	// Version can be set via:
 	// -ldflags="-X go.virtualstaticvoid.com/ldhdns/cmd.Version=$VERSION"

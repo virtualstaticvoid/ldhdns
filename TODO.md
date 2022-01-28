@@ -2,7 +2,7 @@
 
 ## General
 
-- [ ] complete readme
+- [x] complete readme
 - [ ] refactor logging go code
 - [ ] blog post
 
@@ -26,3 +26,4 @@
 - [ ] support multiple domains
 - [ ] docker for Mac/Windows
 - [ ] other host DNS service (not systemd-resolved)
+- [ ] support podman ~ spin off another project ~ `lphdns` - Local Podman Host DNS

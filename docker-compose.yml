@@ -1,19 +1,15 @@
 ---
-networks:
-  altnet:
-    driver: bridge
-    enable_ipv6: true
-    ipam:
-      driver: default
-      config:
-      - subnet: 172.30.0.0/24
-      - subnet: 2001:3200:3200::/64
-
 services:
 
   # docker-compose logs --follow ldhdns
   ldhdns:
     image: ldhdns:latest
+
+    # !!!
+    # NB: this may conflict with the value in Makevars; update it if LDHDNS_CONTAINER_NAME is changed
+    # !!!
+    container_name: ldhdns
+
     network_mode: host
     security_opt:
     - "apparmor=unconfined"
@@ -21,9 +17,11 @@ services:
     - "/var/run/docker.sock:/tmp/docker.sock"
     - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
 
-  # xdg-open http://web.ldh.dns
+  # curl -v http://web.ldh.dns
   web:
     image: nginx:latest
+    networks:
+      - frontend
     labels:
       "dns.ldh/subdomain": "web"
 
@@ -31,7 +29,8 @@ services:
   api:
     image: nginx:latest
     networks:
-      - altnet
+      - frontend
+      - backend
     labels:
       "dns.ldh/subdomain": "api"
 
@@ -40,5 +39,26 @@ services:
     image: postgres:latest
     environment:
       POSTGRES_PASSWORD: "p@ssw0rd"
+    networks:
+      - backend
     labels:
       "dns.ldh/subdomain": "pgsql"
+
+networks:
+  frontend:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.30.0.0/24
+      - subnet: 2001:3000:3000::/64
+
+  backend:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.31.0.0/24
+      - subnet: 2001:3100:3100::/64

@@ -1,12 +1,12 @@
 package controller
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/godbus/dbus/v5"
@@ -15,7 +15,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -56,9 +55,9 @@ type server struct {
 	linkObject         dbus.BusObject
 }
 
-func Run(networkId string, domainSuffix string, subDomainLabel string) error {
+func Run(networkId string, domainSuffix string, subDomainLabel string, containerName string) error {
 	log.Println("Starting...")
-	s, err := newServer(networkId, domainSuffix, subDomainLabel)
+	s, err := newServer(networkId, domainSuffix, subDomainLabel, containerName)
 	if err != nil {
 		log.Println("Failed to start server: ", err)
 		return err
@@ -98,7 +97,7 @@ func Run(networkId string, domainSuffix string, subDomainLabel string) error {
 	return nil
 }
 
-func newServer(networkId string, domainSuffix string, subDomainLabel string) (*server, error) {
+func newServer(networkId string, domainSuffix string, subDomainLabel string, containerName string) (*server, error) {
 	// connect to the docker API
 	docker, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -118,7 +117,7 @@ func newServer(networkId string, domainSuffix string, subDomainLabel string) (*s
 		subDomainLabel: subDomainLabel,
 	}
 
-	svr.ownContainerId, err = svr.findOwnContainerId()
+	svr.ownContainerId, err = svr.findOwnContainerId(containerName)
 	if err != nil {
 		log.Println("Failed to determine own container ID: ", err)
 		return nil, err
@@ -184,32 +183,31 @@ func (s *server) close() error {
 	return nil
 }
 
-func (s *server) findOwnContainerId() (string, error) {
+func (s *server) findOwnContainerId(containerName string) (string, error) {
 	var ownContainerId string
 
-	// HACK: get own container information
-	// undocumented feature...
-	// this might break in future
-	file, err := os.Open("/proc/1/cpuset")
+	log.Printf("Attempting to obtain container ID for %q container...\n", containerName)
+	listOptions := types.ContainerListOptions{
+		Filters: filters.NewArgs(
+			filters.KeyValuePair{
+				Key:   "name",
+				Value: containerName,
+			},
+		),
+	}
+
+	matches, err := s.docker.ContainerList(s.ctx, listOptions)
 	if err != nil {
-		log.Println("Failed to open /proc/1/cpuset: ", err)
+		log.Println("Failed to retrieve container list: ", err)
 		return ownContainerId, err
 	}
-	defer file.Close()
 
-	// only need the first line, without \n
-	var firstLine string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		firstLine = scanner.Text()
-		break
-	}
-
-	// extract the last part of path
-	ownContainerId = filepath.Base(firstLine)
-	if len(ownContainerId) < 2 {
-		log.Println("Fatal: Not executing within a container!")
-		return ownContainerId, errors.New("not executing within a container")
+	// FIXME: handle multiple matches; taking the 1st match for now 🤞
+	if len(matches) > 0 {
+		ownContainerId = matches[0].ID
+	} else {
+		log.Println("Fatal: Unable to obtain container ID!")
+		return ownContainerId, errors.New("unable to obtain container id")
 	}
 
 	return ownContainerId, nil
