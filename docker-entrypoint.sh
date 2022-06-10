@@ -8,7 +8,10 @@ case $cmd in
 
 	controller)
 		# run in controller mode
-		exec ldhdns controller --network-id $LDHDNS_NETWORK_ID --domain-suffix $LDHDNS_DOMAIN_SUFFIX --subdomain-label $LDHDNS_SUBDOMAIN_LABEL
+		exec ldhdns controller --network-id "${LDHDNS_NETWORK_ID}" \
+		                       --domain-suffix "${LDHDNS_DOMAIN_SUFFIX}" \
+		                       --subdomain-label "${LDHDNS_SUBDOMAIN_LABEL}" \
+		                       --container-name "${LDHDNS_CONTAINER_NAME}"
 	;;
 
 	dns)
