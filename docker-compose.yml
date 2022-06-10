@@ -5,10 +5,25 @@ services:
   ldhdns:
     image: ldhdns:latest
 
-    # !!!
-    # NB: this may conflict with the value in Makevars; update it if LDHDNS_CONTAINER_NAME is changed
-    # !!!
     container_name: ldhdns
+    environment:
+      LDHDNS_CONTAINER_NAME: ldhdns
+
+    network_mode: host
+    security_opt:
+    - "apparmor=unconfined"
+    volumes:
+    - "/var/run/docker.sock:/tmp/docker.sock"
+    - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
+
+  # docker-compose logs --follow altldhdns
+  altldhdns:
+    image: ldhdns:latest
+
+    container_name: altldhdns
+    environment:
+      LDHDNS_CONTAINER_NAME: altldhdns
+      LDHDNS_DOMAIN_SUFFIX: alt.dns
 
     network_mode: host
     security_opt:
@@ -18,6 +33,7 @@ services:
     - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
 
   # curl -v http://web.ldh.dns
+  # curl -v http://web.alt.dns
   web:
     image: nginx:latest
     networks:
@@ -26,6 +42,7 @@ services:
       "dns.ldh/subdomain": "web"
 
   # curl -v http://api.ldh.dns
+  # curl -v http://api.alt.dns
   api:
     image: nginx:latest
     networks:
@@ -35,6 +52,7 @@ services:
       "dns.ldh/subdomain": "api"
 
   # psql -h pgsql.ldh.dns -U postgres
+  # psql -h pgsql.alt.dns -U postgres
   postgres:
     image: postgres:latest
     environment:
