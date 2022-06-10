@@ -27,10 +27,10 @@ var (
 	// -ldflags="-X go.virtualstaticvoid.com/ldhdns/cmd.Version=$VERSION"
 	Version string
 
-	// top-level cobra.Command
+	// Root top-level cobra.Command
 	Root = &cobra.Command{
 		Use:   "ldhdns",
 		Short: "a tool to provide DNS for docker containers running on a single host.",
-		Run:   func(cmd *cobra.Command, _ []string) { cmd.Usage() },
+		Run:   func(cmd *cobra.Command, _ []string) { _ = cmd.Usage() },
 	}
 )
