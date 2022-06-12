@@ -29,19 +29,15 @@ build:
 		--label org.opencontainers.image.revision="$(GIT_SHA)" \
 		.
 
-.PHONY: .env
-.env:
+.PHONY: run
+run: build
 
-	@# write configuration env vars file
-	@echo "LDHDNS_NETWORK_ID=$(LDHDNS_NETWORK_ID)" 						 > .env
-	@echo "LDHDNS_DOMAIN_SUFFIX=$(LDHDNS_DOMAIN_SUFFIX)" 			>> .env
-	@echo "LDHDNS_SUBDOMAIN_LABEL=$(LDHDNS_SUBDOMAIN_LABEL)" 	>> .env
-	@echo "LDHDNS_CONTAINER_NAME=$(LDHDNS_CONTAINER_NAME)" 	  >> .env
+	docker compose up --force-recreate --build || /bin/true
 
-.PHONY: debug
-debug: .env
+.PHONY: test
+test:
 
-	docker-compose up
+	docker compose run -it --rm test
 
 .PHONY: publish
 publish:
@@ -50,13 +46,16 @@ publish:
 	docker push $(DOCKER_REPO)/$(IMAGE):$(VERSION)
 
 .PHONY: install
-install: build .env
+install: build
 
 	docker run \
 		--name $(LDHDNS_CONTAINER_NAME) \
 		--detach \
 		--network host \
-		--env-file .env \
+		--env LDHDNS_NETWORK_ID=$(LDHDNS_NETWORK_ID) \
+		--env LDHDNS_DOMAIN_SUFFIX=$(LDHDNS_DOMAIN_SUFFIX) \
+		--env LDHDNS_SUBDOMAIN_LABEL=$(LDHDNS_SUBDOMAIN_LABEL) \
+		--env LDHDNS_CONTAINER_NAME=$(LDHDNS_CONTAINER_NAME) \
 		--security-opt "apparmor=unconfined" \
 		--volume "/var/run/docker.sock:/tmp/docker.sock" \
 		--volume "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket" \

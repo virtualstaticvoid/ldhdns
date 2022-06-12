@@ -191,7 +191,7 @@ func (s *server) findOwnContainerId(containerName string) (string, error) {
 		Filters: filters.NewArgs(
 			filters.KeyValuePair{
 				Key:   "name",
-				Value: containerName,
+				Value: fmt.Sprintf("^%s$", containerName),
 			},
 		),
 	}
