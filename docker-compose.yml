@@ -1,14 +1,14 @@
 ---
 services:
 
-  # docker-compose logs --follow ldhdns
   ldhdns:
     image: ldhdns:latest
-
     container_name: ldhdns
     environment:
+      LDHDNS_NETWORK_ID: ldhdns
+      LDHDNS_DOMAIN_SUFFIX: ldh.dns
+      LDHDNS_SUBDOMAIN_LABEL: dns.ldh/subdomain
       LDHDNS_CONTAINER_NAME: ldhdns
-
     network_mode: host
     security_opt:
     - "apparmor=unconfined"
@@ -16,15 +16,14 @@ services:
     - "/var/run/docker.sock:/tmp/docker.sock"
     - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
 
-  # docker-compose logs --follow altldhdns
   altldhdns:
     image: ldhdns:latest
-
     container_name: altldhdns
     environment:
-      LDHDNS_CONTAINER_NAME: altldhdns
+      LDHDNS_NETWORK_ID: altldhdns
       LDHDNS_DOMAIN_SUFFIX: alt.dns
-
+      LDHDNS_SUBDOMAIN_LABEL: alt.ldh/subdomain
+      LDHDNS_CONTAINER_NAME: altldhdns
     network_mode: host
     security_opt:
     - "apparmor=unconfined"
@@ -32,17 +31,14 @@ services:
     - "/var/run/docker.sock:/tmp/docker.sock"
     - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
 
-  # curl -v http://web.ldh.dns
-  # curl -v http://web.alt.dns
   web:
     image: nginx:latest
     networks:
       - frontend
     labels:
       "dns.ldh/subdomain": "web"
+      "alt.ldh/subdomain": "web2"
 
-  # curl -v http://api.ldh.dns
-  # curl -v http://api.alt.dns
   api:
     image: nginx:latest
     networks:
@@ -50,9 +46,8 @@ services:
       - backend
     labels:
       "dns.ldh/subdomain": "api"
+      "alt.ldh/subdomain": "api2"
 
-  # psql -h pgsql.ldh.dns -U postgres
-  # psql -h pgsql.alt.dns -U postgres
   postgres:
     image: postgres:latest
     environment:
@@ -61,6 +56,16 @@ services:
       - backend
     labels:
       "dns.ldh/subdomain": "pgsql"
+      "alt.ldh/subdomain": "pgsql2"
+
+  test:
+    build:
+      dockerfile: Dockerfile.test
+    network_mode: host
+    environment:
+      PGPASSWORD: "p@ssw0rd"
+    profiles:
+      - test
 
 networks:
   frontend:

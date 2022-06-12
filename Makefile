@@ -29,10 +29,15 @@ build:
 		--label org.opencontainers.image.revision="$(GIT_SHA)" \
 		.
 
-.PHONY: debug
-debug:
+.PHONY: run
+run: build
 
-	docker-compose up
+	docker compose up --force-recreate --build || /bin/true
+
+.PHONY: test
+test:
+
+	docker compose run -it --rm test
 
 .PHONY: publish
 publish:

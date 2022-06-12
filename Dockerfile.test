@@ -1,0 +1,7 @@
+FROM alpine:3.9
+RUN apk add --no-cache curl postgresql-client
+
+COPY test.sh /test.sh
+RUN chmod +x /test.sh
+
+ENTRYPOINT ["/test.sh"]
