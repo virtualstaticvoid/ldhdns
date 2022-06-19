@@ -4,11 +4,6 @@ services:
   ldhdns:
     image: ldhdns:latest
     container_name: ldhdns
-    environment:
-      LDHDNS_NETWORK_ID: ldhdns
-      LDHDNS_DOMAIN_SUFFIX: ldh.dns
-      LDHDNS_SUBDOMAIN_LABEL: dns.ldh/subdomain
-      LDHDNS_CONTAINER_NAME: ldhdns
     network_mode: host
     security_opt:
     - "apparmor=unconfined"
@@ -32,7 +27,7 @@ services:
     - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
 
   web:
-    image: nginx:latest
+    image: nginx:1.22.0-alpine
     networks:
       - frontend
     labels:
@@ -40,7 +35,7 @@ services:
       "alt.ldh/subdomain": "web2"
 
   api:
-    image: nginx:latest
+    image: nginx:1.22.0-alpine
     networks:
       - frontend
       - backend
@@ -49,7 +44,7 @@ services:
       "alt.ldh/subdomain": "api2"
 
   postgres:
-    image: postgres:latest
+    image: postgres:14.3-bullseye
     environment:
       POSTGRES_PASSWORD: "p@ssw0rd"
     networks:

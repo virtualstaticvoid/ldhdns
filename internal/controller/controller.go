@@ -312,10 +312,10 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 		}
 
 		config := &container.Config{
-			Image:  s.ownContainer.Config.Image,
-			Cmd:    []string{"dns"},
-			Env:    s.ownContainer.Config.Env,
-			Labels: labels,
+			Image:      s.ownContainer.Config.Image,
+			Entrypoint: []string{"/init"}, // s6-overlay entrypoint
+			Env:        s.ownContainer.Config.Env,
+			Labels:     labels,
 		}
 
 		// Note: needs CAP_NET_ADMIN capabilities
@@ -365,6 +365,12 @@ func (s *server) findOrCreateAndRunDNSContainer() error {
 		return err
 	}
 	s.dnsContainer = &dnsContainer
+
+	// sanity check
+	if !dnsContainer.State.Running {
+		log.Printf("Container unexpectantly exited [%d]\n", dnsContainer.State.ExitCode)
+		return errors.New(fmt.Sprintf("container unexpectantly exited [%d]\n", dnsContainer.State.ExitCode))
+	}
 
 	return nil
 }

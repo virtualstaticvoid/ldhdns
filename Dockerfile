@@ -18,18 +18,21 @@ RUN go build -ldflags="-X go.virtualstaticvoid.com/ldhdns/cmd.Version=$VERSION" 
 FROM debian:buster
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG S6_VERSION
 
 RUN apt-get update -qq \
  && apt-get install -qy \
       curl \
       dnsmasq \
       dumb-init \
+      xz-utils \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-RUN curl --fail --silent -L https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-amd64.tar.gz | \
-    tar xzvf - -C /
+ARG S6_VERSION
+
+RUN curl -sSL "https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-noarch.tar.xz" | tar -Jxpf - -C / \
+ && curl -sSL "https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-$(uname -m).tar.xz" | tar -Jxpf - -C / \
+ && curl -sSL "https://github.com/just-containers/s6-overlay/releases/download/${S6_VERSION}/s6-overlay-symlinks-noarch.tar.xz" | tar -Jxpf - -C /
 
 COPY --from=builder /go/bin/ldhdns /usr/bin/
 
@@ -51,4 +54,3 @@ ENV LDHDNS_SUBDOMAIN_LABEL=dns.ldh/subdomain
 ENV LDHDNS_CONTAINER_NAME=ldhdns
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "docker-entrypoint.sh"]
-CMD ["controller"]
