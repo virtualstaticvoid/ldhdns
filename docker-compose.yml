@@ -4,11 +4,6 @@ services:
   ldhdns:
     image: ldhdns:latest
     container_name: ldhdns
-    environment:
-      LDHDNS_NETWORK_ID: ldhdns
-      LDHDNS_DOMAIN_SUFFIX: ldh.dns
-      LDHDNS_SUBDOMAIN_LABEL: dns.ldh/subdomain
-      LDHDNS_CONTAINER_NAME: ldhdns
     network_mode: host
     security_opt:
     - "apparmor=unconfined"
