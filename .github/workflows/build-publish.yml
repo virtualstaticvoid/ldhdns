@@ -24,12 +24,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Load Makefile.vars
+      - name: Load variables
         run: |
-          cat << EOF >> $GITHUB_ENV
-          VERSION=$(make env-VERSION)
-          S6_VERSION=$(make env-S6_VERSION)
-          EOF
+          cat .env >> $GITHUB_ENV
 
       # Install the cosign tool except on PR
       # https://github.com/sigstore/cosign-installer
@@ -75,7 +72,7 @@ jobs:
         with:
           context: .
           build-args: |
-            VERSION=${{ env.VERSION }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             S6_VERSION=${{ env.S6_VERSION }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
