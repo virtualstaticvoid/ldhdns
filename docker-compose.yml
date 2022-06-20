@@ -1,30 +1,32 @@
 ---
+
+x-ldhdns: &ldhdns
+  image: ldhdns:latest
+  build:
+    args:
+      - "VERSION=(local)"
+      - S6_VERSION
+  network_mode: host
+  security_opt:
+  - "apparmor=unconfined"
+  volumes:
+  - "/var/run/docker.sock:/tmp/docker.sock"
+  - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
+
 services:
 
-  ldhdns:
-    image: ldhdns:latest
+  default-controller:
     container_name: ldhdns
-    network_mode: host
-    security_opt:
-    - "apparmor=unconfined"
-    volumes:
-    - "/var/run/docker.sock:/tmp/docker.sock"
-    - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
+    <<: *ldhdns
 
-  altldhdns:
-    image: ldhdns:latest
+  alternative-controller:
     container_name: altldhdns
+    <<: *ldhdns
     environment:
       LDHDNS_NETWORK_ID: altldhdns
       LDHDNS_DOMAIN_SUFFIX: alt.dns
       LDHDNS_SUBDOMAIN_LABEL: alt.ldh/subdomain
       LDHDNS_CONTAINER_NAME: altldhdns
-    network_mode: host
-    security_opt:
-    - "apparmor=unconfined"
-    volumes:
-    - "/var/run/docker.sock:/tmp/docker.sock"
-    - "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
 
   web:
     image: nginx:1.22.0-alpine

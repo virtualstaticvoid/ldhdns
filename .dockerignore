@@ -15,6 +15,3 @@
 vendor/
 
 .idea
-
-doc/*
-.env*

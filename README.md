@@ -9,8 +9,9 @@ A developer tool for providing DNS for Docker containers running on a local Linu
 * Linux operating system (e.g. Ubuntu)
 * [`systemd-resolved`][resolved] service (enabled and running)
 * [`docker`][docker] (`>= 20.10`)
-* _optionally_, [`docker-compose`][docker-compose] (`>= 1.27`)
-* _optionally_, `make` for build tasks
+* [`docker-compose`][docker-compose] (`>= 1.27`)
+* _optionally_, [`curl`][curl]
+* _optionally_, [`psql`][psql]
 
 ## How it Works
 
@@ -33,7 +34,7 @@ Start the controller, attaching it to the host network, as follows:
 
 **Security Note:** The container mounts the Docker socket so that it can consume the Docker API
 and it is run with the `apparmor=unconfined` security option and mounts the SystemBus socket so
-that it is able to configure `systemd-resolved` dynamically. Please inspect the [code][ldhdns] 
+that it is able to configure `systemd-resolved` dynamically. Please inspect the [code][ldhdns]
 and build the image yourself if you are concerned about security.
 
 ```bash
@@ -120,7 +121,7 @@ services:
 ```
 
 *Note*: Make sure to use the _same label key_ you provided in the `LDHDNS_SUBDOMAIN_LABEL`
-environment variable. 
+environment variable.
 
 *Note*: Labels cannot be added to existing containers so you will need to re-create them to
 apply the label if needed.
@@ -179,6 +180,34 @@ docker run -it --rm curlimages/curl -v http://foo.ldh.dns
 ...
 </html>
 ```
+
+## Hacking
+
+The development experience is based on [docker compose][docker-compose].
+The [docker-compose.yml](docker-compose.yml) file contains two instances of the `ldhdns` service;
+one configured using the defaults and the other with an alternative configuration.
+It also contains sample services with `nginx` and `postgres` so that tests can be conducted
+against these types of services.
+
+The default configuration uses the `ldh.dns` DNS suffix with the `dns.ldh/subdomain` label,
+and the alternative configuration uses the `alt.dns` DNS suffix with the `alt.ldh/subdomain` label.
+
+### Building
+
+Use `docker compose build` to build the `ldhdns` docker image locally.
+
+### Running
+
+Use `docker compose up` to run the services locally.
+
+### Testing
+
+Once the services are running, use `docker compose run test` to run the tests from within the `test`
+service, execute [`test.sh`](test.sh) directly from your host, which uses the `curl` and `psql` tools,
+or navigate to the following URL's with your web browser:
+
+* [http://web.ldh.dns](http://web.ldh.dns)
+* [http://web2.alt.dns](http://web2.alt.dns)
 
 ## Background
 
@@ -255,10 +284,6 @@ container to monitors the Docker API for when containers are started or stopped,
 removing DNS records accordingly, and runs `dnsmasq` to resolve DNS queries for `A` (ipv4)
 and `AAAA` (ipv6) type records for the configured domain.
 
-## Building
-
-Use `make` to build the `ldhdns` docker image.
-
 ## Inspiration
 
 * I got tired of running `docker ps` to figure out the container name, followed by `docker inspect` to get the IP address and then manually editing `/etc/hosts`.
@@ -285,6 +310,7 @@ MIT License. Copyright (c) 2020 Chris Stefano. See [LICENSE](LICENSE) for detail
 [brasey]: https://gist.github.com/brasey/fa2277a6d7242cdf4e4b7c720d42b567#solution
 [container-id-hack1]: https://stackoverflow.com/a/25729598/30521
 [container-id-hack2]: https://stackoverflow.com/a/52988227/30521
+[curl]: https://curl.se/
 [dnsmasq-tips]: https://www.linux.com/topic/networking/advanced-dnsmasq-tips-and-tricks/
 [dnsmasq]: http://www.thekelleys.org.uk/dnsmasq/doc.html
 [docker-compose]: https://docs.docker.com/compose/install
@@ -293,6 +319,7 @@ MIT License. Copyright (c) 2020 Chris Stefano. See [LICENSE](LICENSE) for detail
 [jonathanio]: https://github.com/jonathanio/update-systemd-resolved
 [ldhdns]: https://github.com/virtualstaticvoid/ldhdns
 [programster]: https://github.com/programster/docker-dnsmasq
+[psql]: https://www.postgresql.org/docs/current/app-psql.html
 [resolved-config]: https://www.freedesktop.org/software/systemd/man/systemd-resolved.service.html#Protocols%20and%20Routing
 [resolved]: https://www.freedesktop.org/wiki/Software/systemd/resolved/
 [runtime-spec]: https://github.com/opencontainers/runtime-spec/issues/1105

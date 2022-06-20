@@ -1,3 +1,0 @@
-VERSION?=0.1.17
-IMAGE_NAME:=ldhdns
-S6_VERSION:=v3.1.1.0
