@@ -1,10 +1,10 @@
 ---
 
 x-ldhdns: &ldhdns
-  image: ldhdns:latest
+  image: ghcr.io/virtualstaticvoid/ldhdns:$VERSION
   build:
     args:
-      - "VERSION=(local)"
+      - VERSION
       - S6_VERSION
   network_mode: host
   security_opt:
