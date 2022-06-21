@@ -1,11 +1,13 @@
 #!/bin/sh -e
 
 indent() {
-  sed -u 's/^/   /'
+  sed 's/^/   /'
 }
 
 runtest() {
-  echo "\n🔵 $@\n"
+  echo
+  echo "🔵 $@"
+  echo
   exec "$@" 2>&1 | indent
 }
 
