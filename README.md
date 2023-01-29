@@ -1,6 +1,6 @@
 # Local Docker Host DNS - ldhdns
 
-[![Build Status](https://img.shields.io/github/workflow/status/virtualstaticvoid/ldhdns/build-publish?style=flat-square)](https://github.com/virtualstaticvoid/ldhdns/actions)
+[![Build Status](https://github.com/virtualstaticvoid/ldhdns/actions/workflows/build-publish.yml/badge.svg)](https://github.com/virtualstaticvoid/ldhdns/actions/workflows/build-publish.yml)
 
 A developer tool for providing DNS for Docker containers running on a local Linux development host.
 
